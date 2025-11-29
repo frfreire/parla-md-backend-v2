@@ -1,0 +1,208 @@
+{
+  "rabbit_version": "3.13.0",
+  "rabbitmq_version": "3.13.0",
+  "product_name": "RabbitMQ",
+  "product_version": "3.13.0",
+  "users": [
+    {
+      "name": "guest",
+      "password_hash": "XGtClOlaOe8/Qh6D7QWJ8x16yE8rF8cT5/6OV3YOXLjPCNPf",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": ["administrator"]
+    }
+  ],
+  "vhosts": [
+    {
+      "name": "parlamd"
+    }
+  ],
+  "permissions": [
+    {
+      "user": "guest",
+      "vhost": "parlamd",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "topic_permissions": [],
+  "parameters": [],
+  "global_parameters": [
+    {
+      "name": "internal_cluster_id",
+      "value": "rabbitmq-cluster-id-parlamd-2024"
+    }
+  ],
+  "policies": [
+    {
+      "vhost": "parlamd",
+      "name": "ha-all",
+      "pattern": ".*",
+      "apply-to": "all",
+      "definition": {
+        "ha-mode": "all",
+        "ha-sync-mode": "automatic"
+      },
+      "priority": 0
+    }
+  ],
+  "queues": [
+    {
+      "name": "dados.legislativos.queue",
+      "vhost": "parlamd",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 3600000,
+        "x-max-retries": 3
+      }
+    },
+    {
+      "name": "analise.semantica.queue",
+      "vhost": "parlamd",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 3600000,
+        "x-max-retries": 3
+      }
+    },
+    {
+      "name": "processamento.nlp.queue",
+      "vhost": "parlamd",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 7200000,
+        "x-max-retries": 5
+      }
+    },
+    {
+      "name": "notificacoes.queue",
+      "vhost": "parlamd",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 1800000,
+        "x-max-retries": 2
+      }
+    },
+    {
+      "name": "auditoria.queue",
+      "vhost": "parlamd",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 86400000,
+        "x-max-retries": 1
+      }
+    },
+    {
+      "name": "dados.legislativos.dlq",
+      "vhost": "parlamd",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "analise.semantica.dlq",
+      "vhost": "parlamd",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "processamento.nlp.dlq",
+      "vhost": "parlamd",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "parlamd.exchange",
+      "vhost": "parlamd",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "parlamd.dlx",
+      "vhost": "parlamd",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "parlamd.exchange",
+      "vhost": "parlamd",
+      "destination": "dados.legislativos.queue",
+      "destination_type": "queue",
+      "routing_key": "dados.legislativos.*",
+      "arguments": {}
+    },
+    {
+      "source": "parlamd.exchange",
+      "vhost": "parlamd",
+      "destination": "analise.semantica.queue",
+      "destination_type": "queue",
+      "routing_key": "analise.semantica.*",
+      "arguments": {}
+    },
+    {
+      "source": "parlamd.exchange",
+      "vhost": "parlamd",
+      "destination": "processamento.nlp.queue",
+      "destination_type": "queue",
+      "routing_key": "processamento.nlp.*",
+      "arguments": {}
+    },
+    {
+      "source": "parlamd.exchange",
+      "vhost": "parlamd",
+      "destination": "notificacoes.queue",
+      "destination_type": "queue",
+      "routing_key": "notificacoes.*",
+      "arguments": {}
+    },
+    {
+      "source": "parlamd.exchange",
+      "vhost": "parlamd",
+      "destination": "auditoria.queue",
+      "destination_type": "queue",
+      "routing_key": "auditoria.*",
+      "arguments": {}
+    },
+    {
+      "source": "parlamd.dlx",
+      "vhost": "parlamd",
+      "destination": "dados.legislativos.dlq",
+      "destination_type": "queue",
+      "routing_key": "dados.legislativos",
+      "arguments": {}
+    },
+    {
+      "source": "parlamd.dlx",
+      "vhost": "parlamd",
+      "destination": "analise.semantica.dlq",
+      "destination_type": "queue",
+      "routing_key": "analise.semantica",
+      "arguments": {}
+    },
+    {
+      "source": "parlamd.dlx",
+      "vhost": "parlamd",
+      "destination": "processamento.nlp.dlq",
+      "destination_type": "queue",
+      "routing_key": "processamento.nlp",
+      "arguments": {}
+    }
+  ]
+}

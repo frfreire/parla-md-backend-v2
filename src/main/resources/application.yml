@@ -1,0 +1,480 @@
+spring:
+  application:
+    name: parla-md-backend
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  # Configuração do MongoDB
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/parlamd}
+      auto-index-creation: true
+
+  # Configuração do RabbitMQ
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:guest}
+    password: ${SPRING_RABBITMQ_PASSWORD:guest}
+    virtual-host: ${SPRING_RABBITMQ_VIRTUAL_HOST:/}
+    connection-timeout: 5000
+    template:
+      retry:
+        enabled: true
+        initial-interval: 2000
+        multiplier: 1.5
+        max-attempts: 3
+
+  # Configuração de Segurança OAuth2/JWT com Keycloak
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/parlamd}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8080/realms/parlamd/protocol/openid-connect/certs}
+
+  # Configuração de Cache
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=500,expireAfterWrite=10m
+
+# Configuração do RabbitMQ Exchanges
+rabbitmq:
+  exchanges:
+    model-training: ${RABBITMQ_EXCHANGE_MODEL_TRAINING:model-training-exchange}
+    notifications: ${RABBITMQ_EXCHANGE_NOTIFICATIONS:notifications-exchange}
+    analysis: ${RABBITMQ_EXCHANGE_ANALYSIS:analysis-exchange}
+  queues:
+    model-training: ${RABBITMQ_QUEUE_MODEL_TRAINING:model-training-queue}
+    notifications: ${RABBITMQ_QUEUE_NOTIFICATIONS:notifications-queue}
+    analysis: ${RABBITMQ_QUEUE_ANALYSIS:analysis-queue}
+  routing-keys:
+    model-training: ${RABBITMQ_ROUTING_KEY_MODEL_TRAINING:model.training}
+    notifications: ${RABBITMQ_ROUTING_KEY_NOTIFICATIONS:notifications}
+    analysis: ${RABBITMQ_ROUTING_KEY_ANALYSIS:analysis}
+
+# Configuração do servidor
+server:
+  port: ${SERVER_PORT:8081}
+  forward-headers-strategy: native
+  servlet:
+    context-path: /
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+
+# Configuração do Keycloak
+keycloak:
+  realm: ${KEYCLOAK_REALM:parlamd}
+  auth-server-url: ${KEYCLOAK_AUTH_URL:http://localhost:8080}
+  ssl-required: external
+  resource: ${KEYCLOAK_CLIENT_ID:parlamd-backend}
+  verify-token-audience: true
+
+# Configurações específicas da aplicação
+app:
+  # Configuração de CORS
+  cors:
+    allowed-origins:
+      - ${FRONTEND_URL:http://localhost:4200}
+      - ${FRONTEND_URL_DEV:http://localhost:3000}
+      - ${FRONTEND_URL_PROD:https://parlamd.gov.br}
+    allowed-methods: GET,POST,PUT,DELETE,PATCH,OPTIONS
+    allowed-headers: "*"
+    allow-credentials: true
+    max-age: 3600
+
+  # Configuração de Segurança
+  security:
+    oauth2:
+      enabled: ${OAUTH2_ENABLED:true}
+    enable-csrf: ${ENABLE_CSRF:false}
+    token-validation:
+      enabled: ${TOKEN_VALIDATION_ENABLED:true}
+      cache-duration: 600
+    rate-limiting:
+      enabled: ${RATE_LIMITING_ENABLED:true}
+      requests-per-minute: 100
+
+# Configuração do OpenAPI/Swagger
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+    enabled: true
+    csrf:
+      enabled: false
+    syntax-highlight:
+      activated: true
+    try-it-out-enabled: true
+    filter: true
+    display-request-duration: true
+  show-actuator: true
+  packages-to-scan: br.gov.md.parla_md_backend.controller
+  default-produces-media-type: application/json
+  default-consumes-media-type: application/json
+  paths-to-match: /api/**
+
+# Configuração de Logging
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:INFO}
+    br.gov.md.parla_md_backend: ${LOG_LEVEL_APP:INFO}
+    org.springframework.security: ${LOG_LEVEL_SECURITY:INFO}
+    org.springframework.web: ${LOG_LEVEL_WEB:INFO}
+    org.springframework.amqp: ${LOG_LEVEL_AMQP:INFO}
+    org.springframework.data.mongodb: ${LOG_LEVEL_MONGODB:INFO}
+    org.mongodb.driver: ${LOG_LEVEL_MONGODB_DRIVER:WARN}
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/parlamd-backend.log
+    max-size: 100MB
+    max-history: 30
+
+# Configuração do Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when_authorized
+      show-components: always
+  health:
+    diskspace:
+      enabled: true
+    mongo:
+      enabled: true
+    rabbit:
+      enabled: true
+  info:
+    env:
+      enabled: true
+    git:
+      mode: full
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Configurações de APIs Externas
+camara:
+  api:
+    base-url: ${CAMARA_API_URL:https://dadosabertos.camara.leg.br/api/v2/}
+    timeout: 30000
+    rate-limit:
+      requests-per-second: 10
+
+senado:
+  api:
+    base-url: ${SENADO_API_URL:https://legis.senado.leg.br/dadosabertos/}
+    timeout: 30000
+    rate-limit:
+      requests-per-second: 10
+
+# Configuração de arquivos de busca
+search:
+  terms:
+    file: classpath:search_terms.txt
+
+---
+# Profile para desenvolvimento SEM autenticacao
+spring:
+  config:
+    activate:
+      on-profile: no-auth
+
+  # MongoDB para desenvolvimento
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/parlamd_dev
+
+  # RabbitMQ para desenvolvimento
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+# RabbitMQ Exchanges para no-auth
+rabbitmq:
+  exchanges:
+    model-training: model-training-exchange
+    notifications: notifications-exchange
+    analysis: analysis-exchange
+  queues:
+    model-training: model-training-queue
+    notifications: notifications-queue
+    analysis: analysis-queue
+  routing-keys:
+    model-training: model.training
+    notifications: notifications
+    analysis: analysis
+
+# DESABILITAR OAuth2 completamente
+app:
+  security:
+    oauth2:
+      enabled: false
+    token-validation:
+      enabled: false
+    rate-limiting:
+      enabled: false
+
+# Logging para desenvolvimento
+logging:
+  level:
+    br.gov.md.parla_md_backend: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+
+---
+# Profile de Desenvolvimento
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  # MongoDB para desenvolvimento
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/parlamd_dev
+
+  # RabbitMQ para desenvolvimento
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+# RabbitMQ Exchanges para dev
+rabbitmq:
+  exchanges:
+    model-training: model-training-exchange
+    notifications: notifications-exchange
+    analysis: analysis-exchange
+  queues:
+    model-training: model-training-queue
+    notifications: notifications-queue
+    analysis: analysis-queue
+  routing-keys:
+    model-training: model.training
+    notifications: notifications
+    analysis: analysis
+
+# Keycloak para desenvolvimento
+keycloak:
+  auth-server-url: http://localhost:8080
+  realm: parlamd
+
+# Configurações específicas de desenvolvimento
+app:
+  security:
+    token-validation:
+      enabled: true
+    rate-limiting:
+      enabled: false
+
+# Logging mais detalhado para desenvolvimento
+logging:
+  level:
+    br.gov.md.parla_md_backend: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.data.mongodb: DEBUG
+
+---
+# Profile de Teste
+spring:
+  config:
+    activate:
+      on-profile: test
+
+  # MongoDB para testes
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/parlamd_test
+
+  # RabbitMQ para testes
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+# RabbitMQ Exchanges para test
+rabbitmq:
+  exchanges:
+    model-training: model-training-exchange-test
+    notifications: notifications-exchange-test
+    analysis: analysis-exchange-test
+  queues:
+    model-training: model-training-queue-test
+    notifications: notifications-queue-test
+    analysis: analysis-queue-test
+  routing-keys:
+    model-training: model.training.test
+    notifications: notifications.test
+    analysis: analysis.test
+
+# Keycloak para testes
+keycloak:
+  auth-server-url: http://localhost:8080
+  realm: parlamd-test
+
+# Configurações específicas de teste
+app:
+  security:
+    token-validation:
+      enabled: false
+    rate-limiting:
+      enabled: false
+
+# Logging mais limpo para testes
+logging:
+  level:
+    br.gov.md.parla_md_backend: WARN
+    org.springframework: WARN
+    org.mongodb.driver: ERROR
+
+---
+# Profile de Produção
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  # MongoDB para produção
+  data:
+    mongodb:
+      uri: ${MONGODB_URI}
+
+  # RabbitMQ para produção
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST}
+    port: ${SPRING_RABBITMQ_PORT}
+    username: ${SPRING_RABBITMQ_USERNAME}
+    password: ${SPRING_RABBITMQ_PASSWORD}
+    ssl:
+      enabled: true
+
+# RabbitMQ Exchanges para prod
+rabbitmq:
+  exchanges:
+    model-training: ${RABBITMQ_EXCHANGE_MODEL_TRAINING:model-training-exchange}
+    notifications: ${RABBITMQ_EXCHANGE_NOTIFICATIONS:notifications-exchange}
+    analysis: ${RABBITMQ_EXCHANGE_ANALYSIS:analysis-exchange}
+  queues:
+    model-training: ${RABBITMQ_QUEUE_MODEL_TRAINING:model-training-queue}
+    notifications: ${RABBITMQ_QUEUE_NOTIFICATIONS:notifications-queue}
+    analysis: ${RABBITMQ_QUEUE_ANALYSIS:analysis-queue}
+  routing-keys:
+    model-training: ${RABBITMQ_ROUTING_KEY_MODEL_TRAINING:model.training}
+    notifications: ${RABBITMQ_ROUTING_KEY_NOTIFICATIONS:notifications}
+    analysis: ${RABBITMQ_ROUTING_KEY_ANALYSIS:analysis}
+
+# Keycloak para produção
+keycloak:
+  auth-server-url: ${KEYCLOAK_AUTH_URL}
+  realm: ${KEYCLOAK_REALM}
+  ssl-required: all
+
+# Servidor para produção
+server:
+  port: ${SERVER_PORT:8081}
+  ssl:
+    enabled: ${SSL_ENABLED:false}
+    key-store: ${SSL_KEYSTORE_PATH}
+    key-store-password: ${SSL_KEYSTORE_PASSWORD}
+    key-store-type: PKCS12
+
+# Configurações específicas de produção
+app:
+  cors:
+    allowed-origins:
+      - ${FRONTEND_URL_PROD}
+  security:
+    enable-csrf: true
+    token-validation:
+      enabled: true
+    rate-limiting:
+      enabled: true
+      requests-per-minute: 60
+
+# Logging para produção
+logging:
+  level:
+    root: INFO
+    br.gov.md.parla_md_backend: INFO
+    org.springframework.security: WARN
+  file:
+    name: /var/log/parlamd/parlamd-backend.log
+
+---
+# Profile para Docker
+spring:
+  config:
+    activate:
+      on-profile: docker
+
+  # MongoDB para Docker
+  data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://admin:admin123@mongodb:27017/parlamd?authSource=admin}
+
+  # RabbitMQ para Docker
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:rabbitmq}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:guest}
+    password: ${SPRING_RABBITMQ_PASSWORD:guest}
+    virtual-host: ${SPRING_RABBITMQ_VIRTUAL_HOST:/}
+
+# RabbitMQ Exchanges para Docker
+rabbitmq:
+  exchanges:
+    model-training: model-training-exchange
+    notifications: notifications-exchange
+    analysis: analysis-exchange
+  queues:
+    model-training: model-training-queue
+    notifications: notifications-queue
+    analysis: analysis-queue
+  routing-keys:
+    model-training: model.training
+    notifications: notifications
+    analysis: analysis
+
+# Keycloak para Docker
+keycloak:
+  auth-server-url: ${KEYCLOAK_AUTH_SERVER_URL:http://keycloak:8080}
+  realm: ${KEYCLOAK_REALM:parlamd}
+
+# Configurações específicas do Docker
+app:
+  cors:
+    allowed-origins:
+      - ${FRONTEND_URL:http://localhost:4200}
+      - ${FRONTEND_URL_DEV:http://localhost:3000}
+  security:
+    token-validation:
+      enabled: true
+    rate-limiting:
+      enabled: true
+      requests-per-minute: 100
+
+# Logging para Docker
+logging:
+  level:
+    root: INFO
+    br.gov.md.parla_md_backend: INFO
+    org.springframework.security: INFO
