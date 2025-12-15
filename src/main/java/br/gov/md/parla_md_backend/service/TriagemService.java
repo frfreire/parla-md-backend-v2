@@ -1,7 +1,7 @@
 package br.gov.md.parla_md_backend.service;
 
-import br.gov.md.parla_md_backend.domain.Proposicao;
-import br.gov.md.parla_md_backend.domain.enums.TriagemStatus;
+import br.gov.md.parla_md_backend.domain.legislativo.Proposicao;
+import br.gov.md.parla_md_backend.domain.enums.StatusTriagem;
 import br.gov.md.parla_md_backend.repository.IProposicaoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -19,18 +19,18 @@ public class TriagemService {
     }
 
     public Page<Proposicao> getProposicoesNaoAvaliadas(Pageable pageable){
-        return propositionRepository.findByTriagemStatus(TriagemStatus.NAO_AVALIADO, pageable);
+        return propositionRepository.findByTriagemStatus(StatusTriagem.NAO_AVALIADO, pageable);
     }
 
     public Page<Proposicao> getProposicoesInteresse(Pageable pageable) {
-        return propositionRepository.findByTriagemStatus(TriagemStatus.INTERESSE, pageable);
+        return propositionRepository.findByTriagemStatus(StatusTriagem.INTERESSE, pageable);
     }
 
     public Page<Proposicao> getProposicoesDescartadas(Pageable pageable) {
-        return propositionRepository.findByTriagemStatus(TriagemStatus.DESCARTADO, pageable);
+        return propositionRepository.findByTriagemStatus(StatusTriagem.DESCARTADO, pageable);
     }
 
-    public Proposicao avaliarProposicao(String id, TriagemStatus novoStatus, String observacao) {
+    public Proposicao avaliarProposicao(String id, StatusTriagem novoStatus, String observacao) {
         Proposicao proposicao = propositionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Proposição não encontrada"));
 

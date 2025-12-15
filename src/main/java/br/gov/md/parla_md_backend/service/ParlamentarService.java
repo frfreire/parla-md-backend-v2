@@ -1,7 +1,7 @@
 package br.gov.md.parla_md_backend.service;
 
 import br.gov.md.parla_md_backend.domain.Parlamentar;
-import br.gov.md.parla_md_backend.domain.Proposicao;
+import br.gov.md.parla_md_backend.domain.legislativo.Proposicao;
 import br.gov.md.parla_md_backend.domain.Votacao;
 import br.gov.md.parla_md_backend.domain.enums.TipoParlamentar;
 import br.gov.md.parla_md_backend.repository.IParlamentarRepository;

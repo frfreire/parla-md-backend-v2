@@ -1,10 +1,10 @@
 package br.gov.md.parla_md_backend.service;
 
 import br.gov.md.parla_md_backend.domain.Encaminhamento;
-import br.gov.md.parla_md_backend.domain.Proposicao;
+import br.gov.md.parla_md_backend.domain.legislativo.Proposicao;
 import br.gov.md.parla_md_backend.domain.enums.StatusEncaminhamento;
 import br.gov.md.parla_md_backend.domain.enums.StatusParecer;
-import br.gov.md.parla_md_backend.domain.enums.TriagemStatus;
+import br.gov.md.parla_md_backend.domain.enums.StatusTriagem;
 import br.gov.md.parla_md_backend.repository.IEncaminhamentoRepository;
 import br.gov.md.parla_md_backend.repository.IProposicaoRepository;
 import org.springframework.stereotype.Service;
@@ -28,7 +28,7 @@ public class OpiniaoService {
         Proposicao proposicao = propositionRepository.findById(propositionId)
                 .orElseThrow(() -> new RuntimeException("Proposição não encontrada"));
 
-        if (proposicao.getTriagemStatus() != TriagemStatus.INTERESSE) {
+        if (proposicao.getTriagemStatus() != StatusTriagem.INTERESSE) {
             throw new IllegalStateException("Apenas proposições de interesse podem ter pareceres iniciados");
         }
 

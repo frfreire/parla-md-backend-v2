@@ -1,6 +1,6 @@
 package br.gov.md.parla_md_backend.strategy;
 
-import br.gov.md.parla_md_backend.domain.Proposicao;
+import br.gov.md.parla_md_backend.domain.legislativo.Proposicao;
 import br.gov.md.parla_md_backend.service.ProcedimentoProposicaoService;
 import br.gov.md.parla_md_backend.service.strategy.IProcedimentoStrategy;
 import org.springframework.stereotype.Component;

@@ -1,6 +1,6 @@
 package br.gov.md.parla_md_backend.service;
 
-import br.gov.md.parla_md_backend.domain.Proposicao;
+import br.gov.md.parla_md_backend.domain.legislativo.Proposicao;
 import br.gov.md.parla_md_backend.exception.DominioException;
 import br.gov.md.parla_md_backend.exception.ValidacaoException;
 import br.gov.md.parla_md_backend.repository.IProposicaoRepository;

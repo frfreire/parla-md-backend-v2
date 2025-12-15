@@ -1,7 +1,7 @@
 package br.gov.md.parla_md_backend.service.ai;
 
-import br.gov.md.parla_md_backend.domain.Materia;
-import br.gov.md.parla_md_backend.domain.Proposicao;
+import br.gov.md.parla_md_backend.domain.legislativo.Materia;
+import br.gov.md.parla_md_backend.domain.legislativo.Proposicao;
 import br.gov.md.parla_md_backend.domain.Usuario;
 import br.gov.md.parla_md_backend.strategy.NotificacaoDefaultStrategy;
 import br.gov.md.parla_md_backend.strategy.NotificacaoMateriaStrategy;

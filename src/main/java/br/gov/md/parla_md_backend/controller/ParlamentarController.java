@@ -1,7 +1,7 @@
 package br.gov.md.parla_md_backend.controller;
 
 import br.gov.md.parla_md_backend.domain.Parlamentar;
-import br.gov.md.parla_md_backend.domain.Proposicao;
+import br.gov.md.parla_md_backend.domain.legislativo.Proposicao;
 import br.gov.md.parla_md_backend.service.ai.BehaviorAnalysisService;
 import br.gov.md.parla_md_backend.service.ParlamentarService;
 import org.springframework.beans.factory.annotation.Autowired;

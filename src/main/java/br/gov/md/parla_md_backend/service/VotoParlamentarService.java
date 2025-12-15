@@ -1,6 +1,8 @@
 package br.gov.md.parla_md_backend.service;
 
 import br.gov.md.parla_md_backend.domain.*;
+import br.gov.md.parla_md_backend.domain.legislativo.Materia;
+import br.gov.md.parla_md_backend.domain.legislativo.Proposicao;
 import br.gov.md.parla_md_backend.messaging.RabbitMQProducer;
 import br.gov.md.parla_md_backend.repository.IParlamentarRepository;
 import br.gov.md.parla_md_backend.repository.IVotacaoRepository;

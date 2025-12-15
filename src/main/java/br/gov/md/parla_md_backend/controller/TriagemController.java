@@ -1,7 +1,7 @@
 package br.gov.md.parla_md_backend.controller;
 
-import br.gov.md.parla_md_backend.domain.Proposicao;
-import br.gov.md.parla_md_backend.domain.enums.TriagemStatus;
+import br.gov.md.parla_md_backend.domain.legislativo.Proposicao;
+import br.gov.md.parla_md_backend.domain.enums.StatusTriagem;
 import br.gov.md.parla_md_backend.service.TriagemService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -38,7 +38,7 @@ public class TriagemController {
     @PostMapping("/{id}/avaliar")
     public ResponseEntity<Proposicao> avaliarProposicao(
             @PathVariable String id,
-            @RequestParam TriagemStatus novoStatus,
+            @RequestParam StatusTriagem novoStatus,
             @RequestParam(required = false) String observacao) {
         Proposicao proposicaoAvaliada = triagemService.avaliarProposicao(id, novoStatus, observacao);
         return ResponseEntity.ok(proposicaoAvaliada);

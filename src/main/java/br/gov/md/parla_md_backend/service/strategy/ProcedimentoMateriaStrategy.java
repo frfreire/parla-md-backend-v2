@@ -1,6 +1,6 @@
 package br.gov.md.parla_md_backend.service.strategy;
 
-import br.gov.md.parla_md_backend.domain.Materia;
+import br.gov.md.parla_md_backend.domain.legislativo.Materia;
 import br.gov.md.parla_md_backend.service.ProcedimentoMateriaService;
 import br.gov.md.parla_md_backend.exception.DominioException;
 import org.slf4j.Logger;

@@ -77,9 +77,9 @@ app:
   # Configuração de CORS
   cors:
     allowed-origins:
-      - ${FRONTEND_URL:http://localhost:4200}
-      - ${FRONTEND_URL_DEV:http://localhost:3000}
-      - ${FRONTEND_URL_PROD:https://parlamd.gov.br}
+      - ${FRONTEND_URL: http://localhost:4200}
+      - ${FRONTEND_URL_DEV: http://localhost:3000}
+      - ${FRONTEND_URL_PROD: https://parlamd.gov.br}
     allowed-methods: GET,POST,PUT,DELETE,PATCH,OPTIONS
     allowed-headers: "*"
     allow-credentials: true
@@ -96,6 +96,17 @@ app:
     rate-limiting:
       enabled: ${RATE_LIMITING_ENABLED:true}
       requests-per-minute: 100
+
+ollama:
+  url:${OLLAMA_SERVER: http://localhost:11434}
+  model: llama3.2:3b
+  timeout: 60000
+  temperature: 0.7
+
+cache:
+  llm:
+    ttl: 3600
+    max-entries: 1000
 
 # Configuração do OpenAPI/Swagger
 springdoc:
@@ -164,7 +175,7 @@ management:
   metrics:
     export:
       prometheus:
-        enabled: true
+
 
 # Configurações de APIs Externas
 camara:

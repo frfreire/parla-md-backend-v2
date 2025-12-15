@@ -3,9 +3,9 @@ package br.gov.md.parla_md_backend.service;
 import br.gov.md.parla_md_backend.domain.TemaComportamento;
 import br.gov.md.parla_md_backend.domain.Parlamentar;
 import br.gov.md.parla_md_backend.domain.ProcedimentoProposicao;
-import br.gov.md.parla_md_backend.domain.Proposicao;
+import br.gov.md.parla_md_backend.domain.legislativo.Proposicao;
 import br.gov.md.parla_md_backend.domain.enums.StatusTramitacao;
-import br.gov.md.parla_md_backend.domain.enums.TriagemStatus;
+import br.gov.md.parla_md_backend.domain.enums.StatusTriagem;
 import br.gov.md.parla_md_backend.repository.IParlamentarRepository;
 import br.gov.md.parla_md_backend.repository.IProcedimentoProposicaoRepository;
 import br.gov.md.parla_md_backend.repository.IProposicaoRepository;
@@ -141,7 +141,7 @@ public class CamaraService {
 
         // Campos específicos da aplicação
         proposicao.setProbabilidadeAprovacao(0.0);
-        proposicao.setTriagemStatus(TriagemStatus.NAO_AVALIADO);
+        proposicao.setTriagemStatus(StatusTriagem.NAO_AVALIADO);
 
         return proposicao;
     }
@@ -149,7 +149,7 @@ public class CamaraService {
     private Proposicao mapApiToProposition(/* parâmetros */) {
         Proposicao proposicao = new Proposicao();
         // TODO Montar mapeamento dos campos
-        proposicao.setTriagemStatus(TriagemStatus.NAO_AVALIADO);
+        proposicao.setTriagemStatus(StatusTriagem.NAO_AVALIADO);
         return proposicao;
     }
 
@@ -220,7 +220,7 @@ public class CamaraService {
         proposicao.setProbabilidadeAprovacao(approvalProbability);
 
         // Definir valores padrão para campos específicos da sua aplicação
-        proposicao.setTriagemStatus(TriagemStatus.NAO_AVALIADO);
+        proposicao.setTriagemStatus(StatusTriagem.NAO_AVALIADO);
         proposicao.setStatusTramitacao(StatusTramitacao.EM_ANDAMENTO);
 
         return proposicao;

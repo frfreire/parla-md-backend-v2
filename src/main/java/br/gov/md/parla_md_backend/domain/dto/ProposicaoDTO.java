@@ -1,10 +1,10 @@
 package br.gov.md.parla_md_backend.domain.dto;
 
 import br.gov.md.parla_md_backend.domain.Encaminhamento;
-import br.gov.md.parla_md_backend.domain.Proposicao;
+import br.gov.md.parla_md_backend.domain.legislativo.Proposicao;
 import br.gov.md.parla_md_backend.domain.enums.StatusParecer;
 import br.gov.md.parla_md_backend.domain.enums.StatusTramitacao;
-import br.gov.md.parla_md_backend.domain.enums.TriagemStatus;
+import br.gov.md.parla_md_backend.domain.enums.StatusTriagem;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -54,7 +54,7 @@ public class ProposicaoDTO {
     private String status;
     private boolean aprovada;
     private double approvalProbability;
-    private TriagemStatus triagemStatus;
+    private StatusTriagem statusTriagem;
     private String setorAtual;
     private StatusTramitacao statusTramitacao;
     private String observacaoTriagem;

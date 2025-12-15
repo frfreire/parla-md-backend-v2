@@ -1,6 +1,6 @@
 package br.gov.md.parla_md_backend.service;
 
-import br.gov.md.parla_md_backend.domain.Materia;
+import br.gov.md.parla_md_backend.domain.legislativo.Materia;
 import br.gov.md.parla_md_backend.domain.Parlamentar;
 import br.gov.md.parla_md_backend.domain.ProcedimentoProposicao;
 import br.gov.md.parla_md_backend.repository.IMateriaRepository;
