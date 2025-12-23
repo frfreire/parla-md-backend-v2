@@ -1,8 +1,8 @@
 package br.gov.md.parla_md_backend.strategy;
 
-import br.gov.md.parla_md_backend.domain.legislativo.Materia;
+import br.gov.md.parla_md_backend.domain.Materia;
 import br.gov.md.parla_md_backend.service.ProcedimentoMateriaService;
-import br.gov.md.parla_md_backend.service.strategy.IProcedimentoStrategy;
+import br.gov.md.parla_md_backend.service.interfaces.IProcedimentoStrategy;
 import org.springframework.stereotype.Component;
 
 @Component("procedimentoMateriaStrategyLegacy")

@@ -25,7 +25,7 @@ Migrar os controladores para nomenclatura em português, aplicar documentação 
 ```java
 package br.gov.md.parla_md_backend.controller;
 
-import br.gov.md.parla_md_backend.domain.legislativo.Proposicao;
+import br.gov.md.parla_md_backend.domain.Proposicao;
 import br.gov.md.parla_md_backend.service.ServicoProposicao;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

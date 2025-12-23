@@ -1,7 +1,7 @@
 package br.gov.md.parla_md_backend.repository;
 
 import br.gov.md.parla_md_backend.domain.enums.AlinhamentoPolitico;
-import br.gov.md.parla_md_backend.domain.parlamentar.PerfilParlamentar;
+import br.gov.md.parla_md_backend.domain.PerfilParlamentar;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;

@@ -1,6 +1,5 @@
 package br.gov.md.parla_md_backend.service;
 
-import br.gov.md.parla_md_backend.domain.Posicionamento;
 import br.gov.md.parla_md_backend.domain.Setor;
 import br.gov.md.parla_md_backend.domain.enums.TipoPosicionamento;
 import br.gov.md.parla_md_backend.domain.enums.TipoSetor;

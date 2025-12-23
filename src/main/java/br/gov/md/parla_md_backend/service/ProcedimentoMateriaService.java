@@ -1,6 +1,6 @@
 package br.gov.md.parla_md_backend.service;
 
-import br.gov.md.parla_md_backend.domain.legislativo.Materia;
+import br.gov.md.parla_md_backend.domain.Materia;
 import br.gov.md.parla_md_backend.domain.ProcedimentoMateria;
 import br.gov.md.parla_md_backend.messaging.RabbitMQProducer;
 import br.gov.md.parla_md_backend.repository.IProcedimentoMateriaRepository;

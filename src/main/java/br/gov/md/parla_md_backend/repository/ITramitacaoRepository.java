@@ -1,7 +1,7 @@
 package br.gov.md.parla_md_backend.repository;
 
 import br.gov.md.parla_md_backend.domain.enums.StatusTramitacao;
-import br.gov.md.parla_md_backend.domain.tramitacao.Tramitacao;
+import br.gov.md.parla_md_backend.domain.Tramitacao;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;

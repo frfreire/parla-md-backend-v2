@@ -1,18 +1,20 @@
 package br.gov.md.parla_md_backend.domain;
 
-import br.gov.md.parla_md_backend.domain.enums.StatusPosicionamento;
 import br.gov.md.parla_md_backend.domain.enums.TipoPosicionamento;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
+/**
+ * Posicionamento institucional de órgão externo ao MD
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -23,28 +25,49 @@ public class Posicionamento {
     @Id
     private String id;
 
-    @Indexed
     private String processoId;
 
-    @Indexed
-    private String orgaoExternoId;
-    private String orgaoExternoNome;
+    private String numero;
 
-    private String solicitanteId;
-    private String solicitanteNome;
+    private String orgaoEmissorId;
 
-    private TipoPosicionamento tipo;
-    private StatusPosicionamento status;
+    private String orgaoEmissorNome;
 
-    private String conteudo;
+    private String tipoOrgao;
+
+    private String representanteNome;
+
+    private String representanteCargo;
+
+    private TipoPosicionamento posicao;
+
+    private String assunto;
+
+    private String manifestacao;
+
     private String justificativa;
-    private String observacoes;
+
+    private List<String> fundamentacao = new ArrayList<>();
+
+    private List<String> condicoesRessalvas = new ArrayList<>();
+
+    private String impactoEstimado;
 
     private LocalDateTime dataSolicitacao;
-    private LocalDateTime dataRecebimento;
-    private LocalDate prazo;
 
-    @Builder.Default
-    private LocalDateTime dataCriacao = LocalDateTime.now();
-    private LocalDateTime dataAtualizacao;
+    private LocalDateTime dataRecebimento;
+
+    private LocalDateTime prazo;
+
+    private boolean atendidoPrazo;
+
+    private StatusPosicionamento status;
+
+    private String documentoOficial;
+
+    private String numeroOficio;
+
+    private List<String> anexos = new ArrayList<>();
+
+    private String observacoes;
 }

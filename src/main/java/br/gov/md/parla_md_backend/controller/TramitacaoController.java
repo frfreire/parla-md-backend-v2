@@ -2,7 +2,7 @@ package br.gov.md.parla_md_backend.controller;
 
 import br.gov.md.parla_md_backend.domain.dto.EncaminhamentoDTO;
 import br.gov.md.parla_md_backend.domain.dto.TramitacaoDTO;
-import br.gov.md.parla_md_backend.service.tramitacao.TramitacaoService;
+import br.gov.md.parla_md_backend.service.TramitacaoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;

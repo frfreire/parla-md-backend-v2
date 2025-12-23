@@ -1,10 +1,10 @@
 package br.gov.md.parla_md_backend.service;
 
-import br.gov.md.parla_md_backend.domain.legislativo.Proposicao;
+import br.gov.md.parla_md_backend.domain.Proposicao;
 import br.gov.md.parla_md_backend.domain.ProcedimentoProposicao;
 import br.gov.md.parla_md_backend.repository.IProcedimentoProposicaoRepository;
 import br.gov.md.parla_md_backend.messaging.RabbitMQProducer;
-import br.gov.md.parla_md_backend.service.strategy.IProcedimentoStrategy;
+import br.gov.md.parla_md_backend.service.interfaces.IProcedimentoStrategy;
 import br.gov.md.parla_md_backend.util.ApiClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;

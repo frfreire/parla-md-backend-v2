@@ -3,7 +3,7 @@ package br.gov.md.parla_md_backend.controller;
 import br.gov.md.parla_md_backend.domain.parecer.Recomendacao;
 import br.gov.md.parla_md_backend.domain.dto.ParecerDTO;
 import br.gov.md.parla_md_backend.domain.dto.SolicitarParecerDTO;
-import br.gov.md.parla_md_backend.service.parecer.ParecerService;
+import br.gov.md.parla_md_backend.service.ParecerService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;

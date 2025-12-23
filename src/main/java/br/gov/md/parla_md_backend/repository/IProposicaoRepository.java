@@ -1,6 +1,6 @@
 package br.gov.md.parla_md_backend.repository;
 
-import br.gov.md.parla_md_backend.domain.legislativo.Proposicao;
+import br.gov.md.parla_md_backend.domain.Proposicao;
 import br.gov.md.parla_md_backend.domain.enums.StatusTriagem;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

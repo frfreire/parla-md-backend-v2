@@ -25,7 +25,7 @@ Refatorar os principais serviços do sistema, convertendo nomenclatura para port
 ```java
 package br.gov.md.parla_md_backend.service;
 
-import br.gov.md.parla_md_backend.domain.legislativo.Proposicao;
+import br.gov.md.parla_md_backend.domain.Proposicao;
 import br.gov.md.parla_md_backend.exception.EntidadeNaoEncontradaException;
 import br.gov.md.parla_md_backend.exception.ExcecaoValidacao;
 import br.gov.md.parla_md_backend.repository.IRepositorioProposicao;

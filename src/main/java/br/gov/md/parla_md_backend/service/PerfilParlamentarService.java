@@ -1,6 +1,6 @@
 package br.gov.md.parla_md_backend.service;
 
-import br.gov.md.parla_md_backend.domain.parlamentar.PerfilParlamentar;
+import br.gov.md.parla_md_backend.domain.PerfilParlamentar;
 import br.gov.md.parla_md_backend.exception.RecursoNaoEncontradoException;
 import br.gov.md.parla_md_backend.repository.IPerfilParlamentarRepository;
 import lombok.RequiredArgsConstructor;

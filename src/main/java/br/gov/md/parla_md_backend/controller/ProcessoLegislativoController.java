@@ -3,7 +3,7 @@ package br.gov.md.parla_md_backend.controller;
 import br.gov.md.parla_md_backend.domain.enums.StatusProcesso;
 import br.gov.md.parla_md_backend.domain.dto.CriarProcessoDTO;
 import br.gov.md.parla_md_backend.domain.dto.ProcessoLegislativoDTO;
-import br.gov.md.parla_md_backend.service.processo.ProcessoLegislativoService;
+import br.gov.md.parla_md_backend.service.ProcessoLegislativoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;

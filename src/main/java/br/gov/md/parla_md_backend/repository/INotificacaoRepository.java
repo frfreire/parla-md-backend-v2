@@ -2,7 +2,7 @@ package br.gov.md.parla_md_backend.repository;
 
 import br.gov.md.parla_md_backend.domain.enums.StatusNotificacao;
 import br.gov.md.parla_md_backend.domain.enums.TipoNotificacao;
-import br.gov.md.parla_md_backend.domain.notificacao.Notificacao;
+import br.gov.md.parla_md_backend.domain.Notificacao;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;

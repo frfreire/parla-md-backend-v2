@@ -1,6 +1,6 @@
 package br.gov.md.parla_md_backend.repository;
 
-import br.gov.md.parla_md_backend.domain.parecer.Parecer;
+import br.gov.md.parla_md_backend.Parecer;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 

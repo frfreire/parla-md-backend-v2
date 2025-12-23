@@ -3,7 +3,7 @@ package br.gov.md.parla_md_backend.service;
 import br.gov.md.parla_md_backend.domain.TemaComportamento;
 import br.gov.md.parla_md_backend.domain.Parlamentar;
 import br.gov.md.parla_md_backend.domain.ProcedimentoProposicao;
-import br.gov.md.parla_md_backend.domain.legislativo.Proposicao;
+import br.gov.md.parla_md_backend.domain.Proposicao;
 import br.gov.md.parla_md_backend.domain.enums.StatusTramitacao;
 import br.gov.md.parla_md_backend.domain.enums.StatusTriagem;
 import br.gov.md.parla_md_backend.repository.IParlamentarRepository;

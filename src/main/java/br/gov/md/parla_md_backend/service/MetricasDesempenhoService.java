@@ -1,7 +1,7 @@
 package br.gov.md.parla_md_backend.service;
 
-import br.gov.md.parla_md_backend.domain.parlamentar.MetricasDesempenho;
-import br.gov.md.parla_md_backend.domain.parlamentar.PerfilParlamentar;
+import br.gov.md.parla_md_backend.domain.MetricasDesempenho;
+import br.gov.md.parla_md_backend.domain.PerfilParlamentar;
 import br.gov.md.parla_md_backend.domain.dto.RankingParlamentarDTO;
 import br.gov.md.parla_md_backend.repository.IPerfilParlamentarRepository;
 import lombok.RequiredArgsConstructor;

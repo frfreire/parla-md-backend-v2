@@ -1,6 +1,6 @@
 package br.gov.md.parla_md_backend.controller;
 
-import br.gov.md.parla_md_backend.domain.DocumentoLegislativo;
+import br.gov.md.parla_md_backend.domain.interfaces.DocumentoLegislativo;
 import br.gov.md.parla_md_backend.service.ai.LegislativeAssistantAIService;
 import br.gov.md.parla_md_backend.service.ai.NotificationService;
 import br.gov.md.parla_md_backend.service.ai.DashboardService;

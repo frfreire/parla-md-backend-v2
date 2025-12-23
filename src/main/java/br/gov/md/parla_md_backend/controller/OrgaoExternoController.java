@@ -1,6 +1,6 @@
 package br.gov.md.parla_md_backend.controller;
 
-import br.gov.md.parla_md_backend.domain.organizacao.OrgaoExterno;
+import br.gov.md.parla_md_backend.domain.OrgaoExterno;
 import br.gov.md.parla_md_backend.service.organizacao.OrgaoExternoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;

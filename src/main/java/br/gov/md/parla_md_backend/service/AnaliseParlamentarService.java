@@ -1,13 +1,12 @@
 package br.gov.md.parla_md_backend.service;
 
 import br.gov.md.parla_md_backend.domain.enums.AlinhamentoPolitico;
-import br.gov.md.parla_md_backend.domain.parlamentar.PerfilParlamentar;
+import br.gov.md.parla_md_backend.domain.PerfilParlamentar;
 import br.gov.md.parla_md_backend.domain.dto.AnaliseParlamentarDTO;
 import br.gov.md.parla_md_backend.domain.dto.MetricasDesempenhoDTO;
 import br.gov.md.parla_md_backend.domain.dto.PosicionamentoTematicoDTO;
 import br.gov.md.parla_md_backend.exception.RecursoNaoEncontradoException;
 import br.gov.md.parla_md_backend.repository.IPerfilParlamentarRepository;
-import br.gov.md.parla_md_backend.service.llm.LlamaService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,7 +15,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Service

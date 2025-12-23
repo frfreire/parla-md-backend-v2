@@ -1,6 +1,6 @@
 package br.gov.md.parla_md_backend.repository;
 
-import br.gov.md.parla_md_backend.domain.notificacao.DispositivoUsuario;
+import br.gov.md.parla_md_backend.domain.DispositivoUsuario;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 

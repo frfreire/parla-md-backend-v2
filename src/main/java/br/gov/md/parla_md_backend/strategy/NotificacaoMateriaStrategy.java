@@ -1,6 +1,6 @@
 package br.gov.md.parla_md_backend.strategy;
 
-import br.gov.md.parla_md_backend.domain.DocumentoLegislativo;
+import br.gov.md.parla_md_backend.domain.interfaces.DocumentoLegislativo;
 import br.gov.md.parla_md_backend.strategy.interfaces.NotificacaoStrategy;
 
 public class NotificacaoMateriaStrategy implements NotificacaoStrategy {
