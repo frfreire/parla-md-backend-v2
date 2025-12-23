@@ -1,6 +1,6 @@
 package br.gov.md.parla_md_backend.domain.dto;
 
-import br.gov.md.parla_md_backend.domain.TipoParecer;
+import br.gov.md.parla_md_backend.domain.enums.TipoParecer;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

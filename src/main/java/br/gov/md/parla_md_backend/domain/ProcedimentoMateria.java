@@ -36,6 +36,6 @@ public class ProcedimentoMateria {
 
     public void setMateria(Materia materia) {
         this.materia = materia;
-        this.matterId = materia != null ? materia.getCodigo() : null;
+        this.matterId = String.valueOf(materia != null ? materia.getCodigoMateria() : null);
     }
 }

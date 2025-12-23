@@ -117,22 +117,10 @@ public class UsuarioInfoDTO {
     @JsonProperty("metadados")
     private Map<String, Object> metadados;
     
-    /**
-     * Verifica se o usuário possui uma role específica.
-     * 
-     * @param role a role a ser verificada
-     * @return true se o usuário possui a role, false caso contrário
-     */
     public boolean possuiRole(String role) {
         return roles != null && roles.contains(role);
     }
     
-    /**
-     * Verifica se o usuário possui qualquer uma das roles especificadas.
-     * 
-     * @param rolesParaVerificar conjunto de roles para verificar
-     * @return true se o usuário possui pelo menos uma das roles
-     */
     public boolean possuiQualquerRole(Set<String> rolesParaVerificar) {
         if (roles == null || rolesParaVerificar == null) {
             return false;
@@ -140,22 +128,10 @@ public class UsuarioInfoDTO {
         return roles.stream().anyMatch(rolesParaVerificar::contains);
     }
     
-    /**
-     * Verifica se o usuário possui uma permissão específica.
-     * 
-     * @param permissao a permissão a ser verificada
-     * @return true se o usuário possui a permissão, false caso contrário
-     */
     public boolean possuiPermissao(String permissao) {
         return permissoes != null && permissoes.contains(permissao);
     }
     
-    /**
-     * Verifica se o usuário possui qualquer uma das permissões especificadas.
-     * 
-     * @param permissoesParaVerificar conjunto de permissões para verificar
-     * @return true se o usuário possui pelo menos uma das permissões
-     */
     public boolean possuiQualquerPermissao(Set<String> permissoesParaVerificar) {
         if (permissoes == null || permissoesParaVerificar == null) {
             return false;
@@ -163,29 +139,14 @@ public class UsuarioInfoDTO {
         return permissoes.stream().anyMatch(permissoesParaVerificar::contains);
     }
     
-    /**
-     * Verifica se o usuário é um administrador do sistema.
-     * 
-     * @return true se o usuário possui role ADMIN
-     */
     public boolean isAdministrador() {
         return possuiRole("ADMIN");
     }
     
-    /**
-     * Verifica se o usuário está ativo e pode acessar o sistema.
-     * 
-     * @return true se o usuário está ativo, false caso contrário
-     */
     public boolean isUsuarioAtivo() {
         return ativo != null && ativo;
     }
     
-    /**
-     * Obtém o nome para exibição (nome completo ou username como fallback).
-     * 
-     * @return o nome para exibição
-     */
     public String getNomeParaExibicao() {
         if (nomeCompleto != null && !nomeCompleto.trim().isEmpty()) {
             return nomeCompleto;
@@ -193,11 +154,6 @@ public class UsuarioInfoDTO {
         return username;
     }
     
-    /**
-     * Constrói o nome completo a partir do primeiro e último nome.
-     * 
-     * @return o nome completo construído
-     */
     public String construirNomeCompleto() {
         if (primeiroNome == null && ultimoNome == null) {
             return null;

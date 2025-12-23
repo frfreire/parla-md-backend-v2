@@ -1,6 +1,5 @@
 package br.gov.md.parla_md_backend.controller;
 
-import br.gov.md.parla_md_backend.service.ai.AdvancedGenerativeAIService;
 import br.gov.md.parla_md_backend.service.ai.AmendmentSuggestionService;
 import br.gov.md.parla_md_backend.service.ai.DashboardService;
 import br.gov.md.parla_md_backend.service.ai.NotificationService;

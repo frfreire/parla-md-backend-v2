@@ -8,9 +8,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Deputado Federal da Câmara dos Deputados
- */
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Document(collection = "deputados")

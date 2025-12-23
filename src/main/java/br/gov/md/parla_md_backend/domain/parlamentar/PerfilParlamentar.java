@@ -13,10 +13,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Perfil estratégico e analítico de parlamentar
- * Gerado por IA com base em histórico de votações e atuação
- */
 @Data
 @Builder
 @NoArgsConstructor

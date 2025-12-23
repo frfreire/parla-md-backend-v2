@@ -1,6 +1,7 @@
 package br.gov.md.parla_md_backend.domain.dto;
 
 import br.gov.md.parla_md_backend.domain.Encaminhamento;
+import br.gov.md.parla_md_backend.domain.enums.TipoProposicao;
 import br.gov.md.parla_md_backend.domain.legislativo.Proposicao;
 import br.gov.md.parla_md_backend.domain.enums.StatusParecer;
 import br.gov.md.parla_md_backend.domain.enums.StatusTramitacao;
@@ -49,7 +50,7 @@ public class ProposicaoDTO {
     private String autorNome;
     private String partidoAutor;
     private String estadoAutor;
-    private String tipoProposicao;
+    private TipoProposicao tipoProposicao;
     private String tema;
     private String status;
     private boolean aprovada;
@@ -62,7 +63,7 @@ public class ProposicaoDTO {
     private List<Encaminhamento> encaminhamentos;
     private StatusParecer statusParecer;
 
-    public Proposicao toProposition() {
+    public Proposicao paraProposicao() {
         Proposicao proposicao = new Proposicao();
         proposicao.setTema(this.tema);
         proposicao.setPartidoAutor(this.partidoAutor);

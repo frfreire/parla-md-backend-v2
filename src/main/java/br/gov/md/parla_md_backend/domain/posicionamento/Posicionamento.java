@@ -1,5 +1,6 @@
 package br.gov.md.parla_md_backend.domain.posicionamento;
 
+import br.gov.md.parla_md_backend.domain.enums.TipoPosicionamento;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

@@ -9,9 +9,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Classe abstrata base para parlamentares (Deputados e Senadores)
- */
 @Data
 @Document(collection = "parlamentares")
 public abstract class Parlamentar {

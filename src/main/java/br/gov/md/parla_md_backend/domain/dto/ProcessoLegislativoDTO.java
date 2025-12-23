@@ -1,7 +1,7 @@
 package br.gov.md.parla_md_backend.domain.dto;
 
 import br.gov.md.parla_md_backend.domain.processo.PrioridadeProcesso;
-import br.gov.md.parla_md_backend.domain.processo.StatusProcesso;
+import br.gov.md.parla_md_backend.domain.enums.StatusProcesso;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

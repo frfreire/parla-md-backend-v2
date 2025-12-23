@@ -7,9 +7,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDate;
 
-/**
- * Senador da República do Senado Federal
- */
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Document(collection = "senadores")

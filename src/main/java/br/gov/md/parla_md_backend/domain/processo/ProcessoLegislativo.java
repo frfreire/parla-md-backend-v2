@@ -1,22 +1,19 @@
 package br.gov.md.parla_md_backend.domain.processo;
 
-import br.gov.md.parla_md_backend.domain.legislativo.ItemLegislativo;
+import br.gov.md.parla_md_backend.domain.enums.PrioridadeProcesso;
+import br.gov.md.parla_md_backend.domain.enums.StatusProcesso;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.DBRef;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Processo legislativo que pode agrupar Proposições da Câmara
- * e/ou Matérias do Senado
- */
 @Data
 @Builder
 @NoArgsConstructor
@@ -27,48 +24,32 @@ public class ProcessoLegislativo {
     @Id
     private String id;
 
+    @Indexed(unique = true)
     private String numero;
 
     private String titulo;
-
     private String descricao;
 
-    private String temaPrincipal;
-
-    private PrioridadeProcesso prioridade;
-
+    @Indexed
     private StatusProcesso status;
 
-    @DBRef
-    private List<ItemLegislativo> itensLegislativosVinculados = new ArrayList<>();
+    @Indexed
+    private PrioridadeProcesso prioridade;
 
-    private String setorResponsavel;
+    @Builder.Default
+    private List<String> proposicaoIds = new ArrayList<>();
 
-    private String analistaResponsavel;
+    @Builder.Default
+    private List<String> materiaIds = new ArrayList<>();
 
-    private LocalDateTime dataCriacao;
+    private String setorResponsavelId;
+    private String setorResponsavelNome;
 
-    private LocalDateTime dataUltimaAtualizacao;
+    private String gestorId;
+    private String gestorNome;
 
-    private LocalDateTime prazoFinal;
-
-    private String observacoes;
-
-    private List<String> areasImpacto = new ArrayList<>();
-
-    private boolean requerAnaliseJuridica;
-
-    private boolean requerAnaliseOrcamentaria;
-
-    private boolean requerConsultaExterna;
-
-    private Integer numeroPareceresPendentes;
-
-    private Integer numeroPosicionamentosPendentes;
-
-    private String posicaoFinalMD;
-
-    private String justificativaPosicaoFinal;
-
-    private LocalDateTime dataFinalizacao;
+    @Builder.Default
+    private LocalDateTime dataCriacao = LocalDateTime.now();
+    private LocalDateTime dataAtualizacao;
+    private LocalDateTime dataConclusao;
 }

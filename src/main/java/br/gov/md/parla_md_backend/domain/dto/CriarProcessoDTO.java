@@ -1,6 +1,6 @@
 package br.gov.md.parla_md_backend.domain.dto;
 
-import br.gov.md.parla_md_backend.domain.processo.PrioridadeProcesso;
+import br.gov.md.parla_md_backend.domain.enums.PrioridadeProcesso;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;

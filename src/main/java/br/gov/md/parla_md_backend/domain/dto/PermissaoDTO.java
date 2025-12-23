@@ -82,12 +82,6 @@ public class PermissaoDTO {
     @JsonProperty("detalhes_verificacao")
     private Map<String, Object> detalhesVerificacao;
     
-    /**
-     * Cria um DTO para verificação de permissão simples.
-     * 
-     * @param permissao a permissão a ser verificada
-     * @return PermissaoDTO configurado
-     */
     public static PermissaoDTO verificarPermissao(String permissao) {
         return PermissaoDTO.builder()
                 .permissao(permissao)
@@ -95,13 +89,6 @@ public class PermissaoDTO {
                 .build();
     }
     
-    /**
-     * Cria um DTO para verificação de permissão em recurso específico.
-     * 
-     * @param permissao a permissão a ser verificada
-     * @param recurso o recurso específico
-     * @return PermissaoDTO configurado
-     */
     public static PermissaoDTO verificarPermissaoRecurso(String permissao, String recurso) {
         return PermissaoDTO.builder()
                 .permissao(permissao)
@@ -110,13 +97,6 @@ public class PermissaoDTO {
                 .build();
     }
     
-    /**
-     * Cria um DTO para verificação de ação em recurso.
-     * 
-     * @param acao a ação a ser verificada
-     * @param recurso o recurso específico
-     * @return PermissaoDTO configurado
-     */
     public static PermissaoDTO verificarAcaoRecurso(String acao, String recurso) {
         return PermissaoDTO.builder()
                 .acao(acao)
@@ -126,13 +106,6 @@ public class PermissaoDTO {
                 .build();
     }
     
-    /**
-     * Cria um DTO para verificação com roles alternativas.
-     * 
-     * @param permissao a permissão principal
-     * @param rolesAlternativas roles que também concedem acesso
-     * @return PermissaoDTO configurado
-     */
     public static PermissaoDTO verificarComRolesAlternativas(String permissao, Set<String> rolesAlternativas) {
         return PermissaoDTO.builder()
                 .permissao(permissao)
@@ -141,12 +114,6 @@ public class PermissaoDTO {
                 .build();
     }
     
-    /**
-     * Cria um DTO de resposta para permissão permitida.
-     * 
-     * @param permissao a permissão verificada
-     * @return PermissaoDTO com resultado positivo
-     */
     public static PermissaoDTO permissaoPermitida(String permissao) {
         return PermissaoDTO.builder()
                 .permissao(permissao)
@@ -154,13 +121,6 @@ public class PermissaoDTO {
                 .build();
     }
     
-    /**
-     * Cria um DTO de resposta para permissão negada.
-     * 
-     * @param permissao a permissão verificada
-     * @param motivoNegacao o motivo da negação
-     * @return PermissaoDTO com resultado negativo
-     */
     public static PermissaoDTO permissaoNegada(String permissao, String motivoNegacao) {
         return PermissaoDTO.builder()
                 .permissao(permissao)
@@ -169,38 +129,18 @@ public class PermissaoDTO {
                 .build();
     }
     
-    /**
-     * Verifica se a permissão foi permitida.
-     * 
-     * @return true se a permissão foi permitida
-     */
     public boolean isPermitida() {
         return permitido != null && permitido;
     }
     
-    /**
-     * Verifica se a permissão foi negada.
-     * 
-     * @return true se a permissão foi negada
-     */
     public boolean isNegada() {
         return permitido != null && !permitido;
     }
     
-    /**
-     * Verifica se deve usar verificação estrita.
-     * 
-     * @return true se a verificação deve ser estrita
-     */
     public boolean isVerificacaoEstrita() {
         return verificacaoEstrita != null && verificacaoEstrita;
     }
     
-    /**
-     * Constrói a chave de permissão completa baseada na ação e recurso.
-     * 
-     * @return chave de permissão construída
-     */
     public String construirChavePermissao() {
         if (acao != null && recurso != null) {
             return acao.toUpperCase() + "_" + recurso.toUpperCase();

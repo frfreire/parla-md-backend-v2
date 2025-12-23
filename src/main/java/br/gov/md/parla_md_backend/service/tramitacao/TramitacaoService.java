@@ -1,10 +1,10 @@
 package br.gov.md.parla_md_backend.service.tramitacao;
 
 import br.gov.md.parla_md_backend.domain.tramitacao.Tramitacao;
-import br.gov.md.parla_md_backend.domain.tramitacao.TipoTramitacao;
-import br.gov.md.parla_md_backend.domain.tramitacao.StatusTramitacao;
-import br.gov.md.parla_md_backend.dto.tramitacao.EncaminhamentoDTO;
-import br.gov.md.parla_md_backend.dto.tramitacao.TramitacaoDTO;
+import br.gov.md.parla_md_backend.domain.enums.TipoTramitacao;
+import br.gov.md.parla_md_backend.domain.enums.StatusTramitacao;
+import br.gov.md.parla_md_backend.domain.dto.EncaminhamentoDTO;
+import br.gov.md.parla_md_backend.domain.dto.TramitacaoDTO;
 import br.gov.md.parla_md_backend.exception.TramitacaoInvalidaException;
 import br.gov.md.parla_md_backend.repository.ITramitacaoRepository;
 import br.gov.md.parla_md_backend.service.processo.ProcessoLegislativoService;
@@ -15,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -55,10 +56,10 @@ public class TramitacaoService {
                 .despacho(dto.getDespacho())
                 .assunto(dto.getAssunto())
                 .dataEnvio(LocalDateTime.now())
-                .prazo(dto.getPrazo())
+                .prazo(LocalDate.from(dto.getPrazo()))
                 .urgente(dto.isUrgente())
                 .motivoTramitacao(dto.getMotivoTramitacao())
-                .usuarioRemetenteId(usuarioId)
+                .remetenteId(usuarioId)
                 .observacoes(dto.getObservacoes())
                 .build();
 
@@ -89,7 +90,7 @@ public class TramitacaoService {
 
         tramitacao.setStatus(StatusTramitacao.RECEBIDO);
         tramitacao.setDataRecebimento(LocalDateTime.now());
-        tramitacao.setUsuarioDestinatarioId(usuarioId);
+        tramitacao.setDestinatarioId(usuarioId);
 
         Tramitacao atualizada = tramitacaoRepository.save(tramitacao);
 

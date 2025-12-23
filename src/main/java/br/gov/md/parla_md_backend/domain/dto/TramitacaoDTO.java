@@ -1,7 +1,7 @@
 package br.gov.md.parla_md_backend.domain.dto;
 
-import br.gov.md.parla_md_backend.domain.TipoTramitacao;
-import br.gov.md.parla_md_backend.domain.StatusTramitacao;
+import br.gov.md.parla_md_backend.domain.enums.StatusTramitacao;
+import br.gov.md.parla_md_backend.domain.enums.TipoTramitacao;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

@@ -106,13 +106,6 @@ public class TokenValidationDTO {
     @JsonProperty("expira_em_breve")
     private Boolean expiraEmBreve;
     
-    /**
-     * Construtor para criar DTO de token inválido.
-     * 
-     * @param token o token inválido
-     * @param motivoInvalidacao o motivo da invalidação
-     * @return TokenValidationDTO configurado como inválido
-     */
     public static TokenValidationDTO tokenInvalido(String token, String motivoInvalidacao) {
         return TokenValidationDTO.builder()
                 .token(token)
@@ -121,12 +114,6 @@ public class TokenValidationDTO {
                 .build();
     }
     
-    /**
-     * Construtor para criar DTO de token válido.
-     * 
-     * @param token o token válido
-     * @return TokenValidationDTO configurado como válido
-     */
     public static TokenValidationDTO tokenValido(String token) {
         return TokenValidationDTO.builder()
                 .token(token)
@@ -134,11 +121,6 @@ public class TokenValidationDTO {
                 .build();
     }
     
-    /**
-     * Verifica se o token está expirado.
-     * 
-     * @return true se o token está expirado
-     */
     public boolean isTokenExpirado() {
         if (expiraEm == null) {
             return false;
@@ -146,11 +128,6 @@ public class TokenValidationDTO {
         return LocalDateTime.now().isAfter(expiraEm);
     }
     
-    /**
-     * Verifica se o token expira em breve (próximos 5 minutos).
-     * 
-     * @return true se o token expira em breve
-     */
     public boolean isTokenExpiraEmBreve() {
         if (expiraEm == null) {
             return false;
@@ -158,11 +135,6 @@ public class TokenValidationDTO {
         return LocalDateTime.now().plusMinutes(5).isAfter(expiraEm);
     }
     
-    /**
-     * Calcula o tempo restante até a expiração em segundos.
-     * 
-     * @return tempo restante em segundos ou 0 se expirado
-     */
     public long calcularTempoRestanteSegundos() {
         if (expiraEm == null) {
             return 0L;
@@ -176,22 +148,10 @@ public class TokenValidationDTO {
         return java.time.Duration.between(agora, expiraEm).getSeconds();
     }
     
-    /**
-     * Verifica se o token possui uma role específica.
-     * 
-     * @param role a role a ser verificada
-     * @return true se o token possui a role
-     */
     public boolean possuiRole(String role) {
         return roles != null && roles.contains(role);
     }
     
-    /**
-     * Verifica se o token possui um scope específico.
-     * 
-     * @param scope o scope a ser verificado
-     * @return true se o token possui o scope
-     */
     public boolean possuiScope(String scope) {
         return scopes != null && scopes.contains(scope);
     }

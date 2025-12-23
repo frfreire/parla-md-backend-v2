@@ -1,28 +1,13 @@
 package br.gov.md.parla_md_backend.domain.enums;
 
-/**
- * Níveis de visibilidade para documentos (pareceres e despachos)
- */
 public enum NivelVisibilidade {
 
-    /**
-     * Documento visível para todos os usuários autenticados do sistema
-     */
     PUBLICO("Público", "Visível para todos os usuários do sistema"),
 
-    /**
-     * Documento visível apenas para usuários de setores específicos
-     */
     RESTRITO_SETOR("Restrito por Setor", "Visível apenas para setores autorizados"),
 
-    /**
-     * Documento visível apenas para usuários específicos
-     */
     RESTRITO_INDIVIDUAL("Restrito Individual", "Visível apenas para usuários específicos"),
 
-    /**
-     * Documento visível apenas para o autor
-     */
     PRIVADO("Privado", "Visível apenas para o autor");
 
     private final String descricao;

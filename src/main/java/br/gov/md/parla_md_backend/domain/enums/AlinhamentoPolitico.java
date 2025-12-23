@@ -1,8 +1,5 @@
 package br.gov.md.parla_md_backend.domain.enums;
 
-/**
- * Alinhamento político do parlamentar
- */
 public enum AlinhamentoPolitico {
 
     GOVERNO("Governo", "Alinhado com o governo"),

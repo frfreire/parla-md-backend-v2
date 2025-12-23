@@ -1,4 +1,4 @@
-package br.gov.md.parla_md_backend.domain.processo;
+package br.gov.md.parla_md_backend.domain.enums;
 
 public enum StatusProcesso {
     CRIADO("Processo criado"),

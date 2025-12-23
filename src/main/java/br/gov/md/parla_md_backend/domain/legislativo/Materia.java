@@ -20,6 +20,10 @@ public class Materia extends ItemLegislativo {
 
     private String siglaSubtipoMateria;
 
+    private Integer numero;
+
+    private String anoMateria;
+
     private String descricaoSubtipoMateria;
 
     private String descricaoIdentificacaoMateria;
@@ -39,6 +43,8 @@ public class Materia extends ItemLegislativo {
     private String indicadorComplementar;
 
     private String especificacao;
+
+    private String ementaMateria;
 
     private String localidade;
 

@@ -1,23 +1,11 @@
 package br.gov.md.parla_md_backend.domain.enums;
 
-/**
- * Tipos de restrição de acesso
- */
 public enum TipoRestricao {
 
-    /**
-     * Permite apenas visualizar o documento
-     */
     LEITURA("Leitura", "Permite apenas visualizar"),
 
-    /**
-     * Permite visualizar e editar o documento
-     */
     EDICAO("Edição", "Permite visualizar e editar"),
 
-    /**
-     * Acesso total: visualizar, editar e gerenciar permissões
-     */
     TOTAL("Total", "Acesso total incluindo gestão de permissões");
 
     private final String descricao;

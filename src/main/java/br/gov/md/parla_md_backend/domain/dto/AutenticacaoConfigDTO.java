@@ -131,9 +131,6 @@ public class AutenticacaoConfigDTO {
     @JsonProperty("configuracoes_extras")
     private Map<String, Object> configuracoesExtras;
     
-    /**
-     * DTO interno para configurações de CORS.
-     */
     @Data
     @Builder
     @NoArgsConstructor
@@ -167,13 +164,6 @@ public class AutenticacaoConfigDTO {
         private Integer maxAge;
     }
     
-    /**
-     * Constrói a URL completa de login com parâmetros.
-     * 
-     * @param redirectUri URI de redirecionamento após login
-     * @param state parâmetro state para CSRF protection
-     * @return URL completa de login
-     */
     public String construirUrlLogin(String redirectUri, String state) {
         StringBuilder urlBuilder = new StringBuilder(loginUrl);
         urlBuilder.append("?client_id=").append(clientId);
@@ -191,13 +181,6 @@ public class AutenticacaoConfigDTO {
         return urlBuilder.toString();
     }
     
-    /**
-     * Constrói a URL completa de logout com parâmetros.
-     * 
-     * @param redirectUri URI de redirecionamento após logout
-     * @param idTokenHint token ID para logout mais seguro
-     * @return URL completa de logout
-     */
     public String construirUrlLogout(String redirectUri, String idTokenHint) {
         StringBuilder urlBuilder = new StringBuilder(logoutUrl);
         urlBuilder.append("?client_id=").append(clientId);
@@ -213,11 +196,6 @@ public class AutenticacaoConfigDTO {
         return urlBuilder.toString();
     }
     
-    /**
-     * Verifica se a configuração está completa e válida.
-     * 
-     * @return true se todas as configurações essenciais estão presentes
-     */
     public boolean isConfiguracaoValida() {
         return keycloakUrl != null && 
                realm != null && 

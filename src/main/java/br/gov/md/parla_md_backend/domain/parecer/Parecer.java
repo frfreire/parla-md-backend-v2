@@ -1,19 +1,18 @@
 package br.gov.md.parla_md_backend.domain.parecer;
 
+import br.gov.md.parla_md_backend.domain.enums.RecomendacaoParecer;
+import br.gov.md.parla_md_backend.domain.enums.TipoParecer;
+import br.gov.md.parla_md_backend.domain.visibilidade.ControleVisibilidade;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
-/**
- * Parecer técnico emitido por setor interno do MD
- */
 @Data
 @Builder
 @NoArgsConstructor
@@ -24,51 +23,35 @@ public class Parecer {
     @Id
     private String id;
 
-    private String processoId;
-
+    @Indexed
     private String numero;
 
-    private String setorEmissorId;
+    @Indexed
+    private String processoId;
 
+    @Indexed
+    private String setorEmissorId;
     private String setorEmissorNome;
 
-    private String analistaResponsavelId;
-
-    private String analistaResponsavelNome;
+    @Indexed
+    private String analista;
+    private String analistaNome;
 
     private TipoParecer tipo;
-
-    private String assunto;
-
-    private String contexto;
-
-    private String analise;
-
-    private Recomendacao recomendacao;
-
-    private String justificativaRecomendacao;
-
-    private List<String> fundamentacaoLegal = new ArrayList<>();
-
-    private List<String> impactosIdentificados = new ArrayList<>();
-
-    private String conclusao;
-
-    private LocalDateTime dataSolicitacao;
+    private String conteudo;
+    private RecomendacaoParecer recomendacao;
+    private String justificativa;
 
     private LocalDateTime dataEmissao;
-
-    private LocalDateTime prazo;
-
-    private boolean atendidoPrazo;
-
-    private String aprovadoPorId;
-
-    private String aprovadoPorNome;
-
     private LocalDateTime dataAprovacao;
+    private boolean aprovado;
 
-    private List<String> anexos = new ArrayList<>();
+    private String aprovadorId;
+    private String aprovadorNome;
 
-    private String observacoes;
+    private ControleVisibilidade controleVisibilidade;
+
+    @Builder.Default
+    private LocalDateTime dataCriacao = LocalDateTime.now();
+    private LocalDateTime dataAtualizacao;
 }

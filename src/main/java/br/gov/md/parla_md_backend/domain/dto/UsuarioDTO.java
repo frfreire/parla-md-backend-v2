@@ -72,29 +72,14 @@ public class UsuarioDTO {
     @Builder.Default
     private boolean emailVerificado = false;
 
-    /**
-     * Indica se o usuário possui permissão administrativa.
-     *
-     * @return true se o usuário tem role ADMIN
-     */
     public boolean isAdmin() {
         return roles != null && roles.contains("ADMIN");
     }
 
-    /**
-     * Indica se o usuário possui permissão de analista.
-     *
-     * @return true se o usuário tem role ANALISTA
-     */
     public boolean isAnalista() {
         return roles != null && roles.contains("ANALISTA");
     }
 
-    /**
-     * Indica se o usuário possui permissão de gestor.
-     *
-     * @return true se o usuário tem role GESTOR
-     */
     public boolean isGestor() {
         return roles != null && roles.contains("GESTOR");
     }
@@ -103,31 +88,14 @@ public class UsuarioDTO {
         return roles != null && roles.contains("EXTERNO");
     }
 
-    /**
-     * Indica se o usuário possui apenas permissão de visualização.
-     *
-     * @return true se o usuário tem apenas role VIEWER
-     */
     public boolean isViewer() {
         return roles != null && roles.contains("VIEWER") && roles.size() == 1;
     }
 
-    /**
-     * Verifica se o usuário possui uma role específica.
-     *
-     * @param role a role a ser verificada
-     * @return true se o usuário possui a role
-     */
     public boolean hasRole(String role) {
         return roles != null && roles.contains(role);
     }
 
-    /**
-     * Verifica se o usuário possui uma permissão específica.
-     *
-     * @param permission a permissão a ser verificada
-     * @return true se o usuário possui a permissão
-     */
     public boolean hasPermission(String permission) {
         return permissoes != null && permissoes.contains(permission);
     }
@@ -142,12 +110,6 @@ public class UsuarioDTO {
         return username;
     }
 
-    /**
-     * Verifica se o token está próximo do vencimento.
-     *
-     * @param minutosThreshold minutos antes do vencimento para considerar "próximo"
-     * @return true se o token expira dentro do threshold especificado
-     */
     public boolean isTokenNearExpiration(int minutosThreshold) {
         if (tokenExpiracao == null) {
             return false;

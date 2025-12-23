@@ -7,10 +7,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Posicionamento do parlamentar em tema específico
- * Embarcado em PerfilParlamentar
- */
 @Data
 @Builder
 @NoArgsConstructor

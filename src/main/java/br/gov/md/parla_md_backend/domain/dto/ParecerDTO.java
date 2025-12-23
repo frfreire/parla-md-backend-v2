@@ -1,7 +1,6 @@
 package br.gov.md.parla_md_backend.domain.dto;
 
-import br.gov.md.parla_md_backend.domain.TipoParecer;
-import br.gov.md.parla_md_backend.domain.Recomendacao;
+import br.gov.md.parla_md_backend.domain.enums.TipoParecer;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

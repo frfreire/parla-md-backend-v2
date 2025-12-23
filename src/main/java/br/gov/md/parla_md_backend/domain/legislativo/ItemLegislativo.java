@@ -1,7 +1,7 @@
 package br.gov.md.parla_md_backend.domain.legislativo;
 
 import br.gov.md.parla_md_backend.domain.enums.Casa;
-import br.gov.md.parla_md_backend.domain.processo.StatusTriagem;
+import br.gov.md.parla_md_backend.domain.enums.StatusTriagem;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;

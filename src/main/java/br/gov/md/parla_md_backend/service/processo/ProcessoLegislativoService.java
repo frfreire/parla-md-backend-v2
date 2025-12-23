@@ -1,7 +1,7 @@
 package br.gov.md.parla_md_backend.service.processo;
 
 import br.gov.md.parla_md_backend.domain.processo.ProcessoLegislativo;
-import br.gov.md.parla_md_backend.domain.processo.StatusProcesso;
+import br.gov.md.parla_md_backend.domain.enums.StatusProcesso;
 import br.gov.md.parla_md_backend.domain.processo.PrioridadeProcesso;
 import br.gov.md.parla_md_backend.domain.proposicao.Proposicao;
 import br.gov.md.parla_md_backend.dto.processo.CriarProcessoDTO;
