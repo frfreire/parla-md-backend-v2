@@ -1,5 +1,6 @@
 package br.gov.md.parla_md_backend.domain.dto;
 
+
 import jakarta.validation.constraints.NotBlank;
 
 public record RegistrarDispositivoDTO(

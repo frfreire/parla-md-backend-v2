@@ -47,4 +47,5 @@ public class Usuario {
     private LocalDateTime dataCriacao = LocalDateTime.now();
     private LocalDateTime dataAtualizacao;
     private LocalDateTime ultimoAcesso;
+
 }

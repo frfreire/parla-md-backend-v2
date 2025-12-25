@@ -11,9 +11,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
 
-/**
- * Dispositivo móvel de usuário para notificações push
- */
 @Data
 @Builder
 @NoArgsConstructor

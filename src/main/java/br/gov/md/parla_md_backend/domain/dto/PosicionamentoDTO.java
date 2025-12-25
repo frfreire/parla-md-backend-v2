@@ -1,7 +1,7 @@
 package br.gov.md.parla_md_backend.domain.dto;
 
-import br.gov.md.parla_md_backend.domain.TipoPosicionamento;
-import br.gov.md.parla_md_backend.domain.StatusPosicionamento;
+import br.gov.md.parla_md_backend.domain.enums.StatusPosicionamento;
+import br.gov.md.parla_md_backend.domain.enums.TipoPosicionamento;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

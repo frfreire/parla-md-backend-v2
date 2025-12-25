@@ -24,4 +24,5 @@ public enum TipoParecer {
     public String getDetalhe() {
         return detalhe;
     }
+
 }

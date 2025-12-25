@@ -47,4 +47,5 @@ public class Setor {
     private boolean podeEmitirParecer;
 
     private boolean recebeTramitacoes;
+
 }

@@ -37,4 +37,5 @@ public enum NivelVisibilidade {
     public boolean isPrivado() {
         return this == PRIVADO;
     }
+
 }

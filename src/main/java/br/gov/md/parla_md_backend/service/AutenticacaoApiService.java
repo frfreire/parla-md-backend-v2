@@ -1,7 +1,7 @@
 package br.gov.md.parla_md_backend.service;
 
-import br.gov.md.parla_md_backend.domain.dto.AutenticacaoConfigDTO;
-import br.gov.md.parla_md_backend.domain.dto.UsuarioInfoDTO;
+import br.gov.md.parla_md_backend.domain.dto.old.AutenticacaoConfigDTO;
+import br.gov.md.parla_md_backend.domain.dto.old.UsuarioInfoDTO;
 import br.gov.md.parla_md_backend.exception.AutenticacaoException;
 import br.gov.md.parla_md_backend.exception.UsuarioNaoEncontradoException;
 import org.slf4j.Logger;

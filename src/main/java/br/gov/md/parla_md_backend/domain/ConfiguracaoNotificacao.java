@@ -11,10 +11,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Configuração global de notificações
- * Geralmente existe apenas um documento desta coleção
- */
 @Data
 @Builder
 @NoArgsConstructor
@@ -25,7 +21,6 @@ public class ConfiguracaoNotificacao {
     @Id
     private String id;
 
-    // Configurações de E-mail
     private String emailRemetente;
     private String nomeRemetente;
     private String servidorSmtp;
@@ -35,12 +30,10 @@ public class ConfiguracaoNotificacao {
     private String smtpUsuario;
     private String smtpSenha;
 
-    // Configurações de Push
     @Builder.Default
     private boolean pushHabilitado = true;
     private String firebaseServerKey;
 
-    // Configurações gerais
     @Builder.Default
     private boolean emailHabilitado = true;
 
@@ -52,7 +45,6 @@ public class ConfiguracaoNotificacao {
     private String whatsappApiUrl;
     private String whatsappApiToken;
 
-    // Limites
     @Builder.Default
     private int maxTentativasEnvio = 3;
 
@@ -62,7 +54,6 @@ public class ConfiguracaoNotificacao {
     @Builder.Default
     private int maxNotificacoesPorHora = 100;
 
-    // Templates de e-mail por tipo
     @Builder.Default
     private Map<TipoNotificacao, String> templatesEmail = new HashMap<>();
 

@@ -1,14 +1,16 @@
 package br.gov.md.parla_md_backend.service;
 
-import br.gov.md.parla_md_backend.Parecer;
-import br.gov.md.parla_md_backend.domain.parecer.Recomendacao;
-import br.gov.md.parla_md_backend.dto.parecer.ParecerDTO;
-import br.gov.md.parla_md_backend.dto.parecer.SolicitarParecerDTO;
-import br.gov.md.parla_md_backend.exception.ParecerJaExisteException;
+import br.gov.md.parla_md_backend.domain.Parecer;
+import br.gov.md.parla_md_backend.domain.dto.ParecerDTO;
+import br.gov.md.parla_md_backend.domain.dto.SolicitarParecerDTO;
+import br.gov.md.parla_md_backend.domain.dto.EmitirParecerDTO;
+import br.gov.md.parla_md_backend.domain.dto.AprovarParecerDTO;
+import br.gov.md.parla_md_backend.domain.enums.RecomendacaoParecer;
+import br.gov.md.parla_md_backend.exception.RecursoNaoEncontradoException;
 import br.gov.md.parla_md_backend.repository.IParecerRepository;
-import br.gov.md.parla_md_backend.service.tramitacao.NotificacaoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -16,10 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
-/**
- * Serviço para gerenciamento de pareceres técnicos internos
- */
+import static br.gov.md.parla_md_backend.config.WorkflowConfig.*;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -27,66 +29,46 @@ public class ParecerService {
 
     private final IParecerRepository parecerRepository;
     private final ProcessoLegislativoService processoService;
-    private final NotificacaoService notificacaoService;
+    private final RabbitTemplate rabbitTemplate;
 
-    /**
-     * Solicita parecer a um setor
-     */
     @Transactional
     public ParecerDTO solicitarParecer(SolicitarParecerDTO dto, String solicitanteId) {
         log.info("Solicitando parecer do setor {} para processo {}",
-                dto.getSetorEmissorId(), dto.getProcessoId());
+                dto.setorEmissorId(), dto.processoId());
 
-        processoService.buscarPorId(dto.getProcessoId());
+        processoService.buscarPorId(dto.processoId());
 
-        verificarParecerDuplicado(dto.getProcessoId(), dto.getSetorEmissorId());
+        verificarParecerDuplicado(dto.processoId(), dto.setorEmissorId());
 
         String numeroParecer = gerarNumeroParecer();
 
         Parecer parecer = Parecer.builder()
-                .processoId(dto.getProcessoId())
                 .numero(numeroParecer)
-                .setorEmissorId(dto.getSetorEmissorId())
-                .setorEmissorNome(dto.getSetorEmissorNome())
-                .tipo(dto.getTipo())
-                .assunto(dto.getAssunto())
+                .processoId(dto.processoId())
+                .setorEmissorId(dto.setorEmissorId())
+                .setorEmissorNome(dto.setorEmissorNome())
+                .tipo(dto.tipo())
+                .assunto(dto.assunto())
                 .dataSolicitacao(LocalDateTime.now())
-                .prazo(dto.getPrazo())
-                .observacoes(dto.getObservacoes())
+                .prazo(dto.prazo())
+                .observacoes(dto.observacoes())
                 .build();
 
-        Parecer salvo = parecerRepository.save(parecer);
+        parecer = parecerRepository.save(parecer);
 
-        processoService.atualizarContagemPareceres(dto.getProcessoId(), 1);
+        enviarParaFila(parecer, "PARECER_SOLICITADO");
 
-        notificacaoService.notificarSolicitacaoParecer(salvo);
+        log.info("Parecer {} solicitado com sucesso", parecer.getNumero());
 
-        log.info("Parecer solicitado com sucesso: {}", salvo.getNumero());
-
-        return converterParaDTO(salvo);
+        return ParecerDTO.fromEntity(parecer);
     }
 
-    /**
-     * Emite parecer
-     */
     @Transactional
-    public ParecerDTO emitirParecer(
-            String parecerId,
-            String analistaId,
-            String analistaNome,
-            String contexto,
-            String analise,
-            Recomendacao recomendacao,
-            String justificativa,
-            List<String> fundamentacaoLegal,
-            List<String> impactosIdentificados,
-            String conclusao) {
+    public ParecerDTO emitirParecer(EmitirParecerDTO dto, String analistaId, String analistaNome) {
+        log.info("Emitindo parecer: {}", dto.parecerId());
 
-        log.info("Emitindo parecer: {}", parecerId);
-
-        Parecer parecer = parecerRepository.findById(parecerId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Parecer não encontrado: " + parecerId));
+        Parecer parecer = parecerRepository.findById(dto.parecerId())
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Parecer não encontrado"));
 
         if (parecer.getDataEmissao() != null) {
             throw new IllegalStateException("Parecer já foi emitido");
@@ -94,37 +76,34 @@ public class ParecerService {
 
         parecer.setAnalistaResponsavelId(analistaId);
         parecer.setAnalistaResponsavelNome(analistaNome);
-        parecer.setContexto(contexto);
-        parecer.setAnalise(analise);
-        parecer.setRecomendacao(recomendacao);
-        parecer.setJustificativaRecomendacao(justificativa);
-        parecer.setFundamentacaoLegal(fundamentacaoLegal);
-        parecer.setImpactosIdentificados(impactosIdentificados);
-        parecer.setConclusao(conclusao);
+        parecer.setTipo(dto.tipo());
+        parecer.setContexto(dto.contexto());
+        parecer.setAnalise(dto.analise());
+        parecer.setRecomendacao(dto.recomendacao());
+        parecer.setJustificativaRecomendacao(dto.justificativa());
+        parecer.setFundamentacaoLegal(dto.fundamentacaoLegal());
+        parecer.setImpactosIdentificados(dto.impactosIdentificados());
+        parecer.setConclusao(dto.conclusao());
         parecer.setDataEmissao(LocalDateTime.now());
-        parecer.setAtendidoPrazo(LocalDateTime.now().isBefore(parecer.getPrazo()));
+        parecer.setAtendidoPrazo(parecer.getPrazo() != null &&
+                LocalDateTime.now().isBefore(parecer.getPrazo()));
+        parecer.setDataAtualizacao(LocalDateTime.now());
 
-        Parecer atualizado = parecerRepository.save(parecer);
+        parecer = parecerRepository.save(parecer);
 
-        notificacaoService.notificarParecerEmitido(atualizado);
+        enviarParaFila(parecer, "PARECER_EMITIDO");
 
-        return converterParaDTO(atualizado);
+        log.info("Parecer {} emitido com sucesso", parecer.getNumero());
+
+        return ParecerDTO.fromEntity(parecer);
     }
 
-    /**
-     * Aprova parecer (superior hierárquico)
-     */
     @Transactional
-    public ParecerDTO aprovarParecer(
-            String parecerId,
-            String aprovadorId,
-            String aprovadorNome) {
+    public ParecerDTO aprovarParecer(AprovarParecerDTO dto, String aprovadorId, String aprovadorNome) {
+        log.info("Processando aprovação do parecer: {}", dto.parecerId());
 
-        log.info("Aprovando parecer: {}", parecerId);
-
-        Parecer parecer = parecerRepository.findById(parecerId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Parecer não encontrado: " + parecerId));
+        Parecer parecer = parecerRepository.findById(dto.parecerId())
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Parecer não encontrado"));
 
         if (parecer.getDataEmissao() == null) {
             throw new IllegalStateException("Parecer ainda não foi emitido");
@@ -134,73 +113,76 @@ public class ParecerService {
             throw new IllegalStateException("Parecer já foi aprovado");
         }
 
+        if (Boolean.FALSE.equals(dto.aprovado())) {
+            log.info("Parecer {} rejeitado por {}", parecer.getNumero(), aprovadorNome);
+
+            parecer.setDataEmissao(null);
+            parecer.setObservacoes(dto.observacoes());
+            parecer.setDataAtualizacao(LocalDateTime.now());
+
+            parecer = parecerRepository.save(parecer);
+
+            enviarParaFila(parecer, "PARECER_REJEITADO");
+
+            return ParecerDTO.fromEntity(parecer);
+        }
+
         parecer.setAprovadoPorId(aprovadorId);
         parecer.setAprovadoPorNome(aprovadorNome);
         parecer.setDataAprovacao(LocalDateTime.now());
+        parecer.setDataAtualizacao(LocalDateTime.now());
 
-        Parecer atualizado = parecerRepository.save(parecer);
+        parecer = parecerRepository.save(parecer);
 
-        processoService.atualizarContagemPareceres(parecer.getProcessoId(), -1);
+        enviarParaFila(parecer, "PARECER_APROVADO");
 
-        notificacaoService.notificarParecerAprovado(atualizado);
+        log.info("Parecer {} aprovado por {}", parecer.getNumero(), aprovadorNome);
 
-        return converterParaDTO(atualizado);
+        return ParecerDTO.fromEntity(parecer);
     }
 
-    /**
-     * Busca pareceres de um processo
-     */
     public List<ParecerDTO> buscarPorProcesso(String processoId) {
         log.debug("Buscando pareceres do processo: {}", processoId);
 
-        return parecerRepository.findByProcessoIdOrderByDataSolicitacaoDesc(processoId)
+        return parecerRepository.findByProcessoId(processoId)
                 .stream()
-                .map(this::converterParaDTO)
+                .map(ParecerDTO::fromEntity)
                 .toList();
     }
 
-    /**
-     * Busca pareceres pendentes de um setor
-     */
-    public Page<ParecerDTO> buscarPendentesPorSetor(
-            String setorId,
-            Pageable pageable) {
-
+    public Page<ParecerDTO> buscarPendentesPorSetor(String setorId, Pageable pageable) {
         log.debug("Buscando pareceres pendentes do setor: {}", setorId);
 
-        return parecerRepository.findBySetorEmissorIdAndDataEmissaoIsNull(
-                        setorId,
-                        pageable)
-                .map(this::converterParaDTO);
+        return parecerRepository.findBySetorEmissorIdAndDataEmissaoIsNull(setorId, pageable)
+                .map(ParecerDTO::fromEntity);
     }
 
-    /**
-     * Busca pareceres emitidos pendentes de aprovação
-     */
     public Page<ParecerDTO> buscarPendentesAprovacao(Pageable pageable) {
         return parecerRepository.findByDataEmissaoIsNotNullAndDataAprovacaoIsNull(pageable)
-                .map(this::converterParaDTO);
+                .map(ParecerDTO::fromEntity);
     }
 
-    /**
-     * Busca pareceres com prazo vencido
-     */
     public List<ParecerDTO> buscarComPrazoVencido() {
         LocalDateTime agora = LocalDateTime.now();
 
         return parecerRepository.findByPrazoBeforeAndDataEmissaoIsNull(agora)
                 .stream()
-                .map(this::converterParaDTO)
+                .map(ParecerDTO::fromEntity)
                 .toList();
     }
 
+    public ParecerDTO buscarPorId(String parecerId) {
+        Parecer parecer = parecerRepository.findById(parecerId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Parecer não encontrado"));
+
+        return ParecerDTO.fromEntity(parecer);
+    }
+
     private void verificarParecerDuplicado(String processoId, String setorId) {
-        boolean existe = parecerRepository.existsByProcessoIdAndSetorEmissorId(
-                processoId, setorId);
+        boolean existe = parecerRepository.existsByProcessoIdAndSetorEmissorId(processoId, setorId);
 
         if (existe) {
-            throw new ParecerJaExisteException(
-                    "Setor já possui parecer solicitado para este processo");
+            throw new IllegalStateException("Setor já possui parecer solicitado para este processo");
         }
     }
 
@@ -210,33 +192,21 @@ public class ParecerService {
         return String.format("PARECER-%d/%05d", ano, count + 1);
     }
 
-    private ParecerDTO converterParaDTO(Parecer parecer) {
-        return ParecerDTO.builder()
-                .id(parecer.getId())
-                .processoId(parecer.getProcessoId())
-                .numero(parecer.getNumero())
-                .setorEmissorId(parecer.getSetorEmissorId())
-                .setorEmissorNome(parecer.getSetorEmissorNome())
-                .analistaResponsavelId(parecer.getAnalistaResponsavelId())
-                .analistaResponsavelNome(parecer.getAnalistaResponsavelNome())
-                .tipo(parecer.getTipo())
-                .assunto(parecer.getAssunto())
-                .contexto(parecer.getContexto())
-                .analise(parecer.getAnalise())
-                .recomendacao(parecer.getRecomendacao())
-                .justificativaRecomendacao(parecer.getJustificativaRecomendacao())
-                .fundamentacaoLegal(parecer.getFundamentacaoLegal())
-                .impactosIdentificados(parecer.getImpactosIdentificados())
-                .conclusao(parecer.getConclusao())
-                .dataSolicitacao(parecer.getDataSolicitacao())
-                .dataEmissao(parecer.getDataEmissao())
-                .prazo(parecer.getPrazo())
-                .atendidoPrazo(parecer.isAtendidoPrazo())
-                .aprovadoPorId(parecer.getAprovadoPorId())
-                .aprovadoPorNome(parecer.getAprovadoPorNome())
-                .dataAprovacao(parecer.getDataAprovacao())
-                .anexos(parecer.getAnexos())
-                .observacoes(parecer.getObservacoes())
-                .build();
+    private void enviarParaFila(Parecer parecer, String evento) {
+        try {
+            rabbitTemplate.convertAndSend(
+                    NOTIFICACAO_EXCHANGE,
+                    NOTIFICACAO_ROUTING_KEY,
+                    Map.of(
+                            "tipo", evento,
+                            "parecerId", parecer.getId(),
+                            "processoId", parecer.getProcessoId(),
+                            "numero", parecer.getNumero()
+                    )
+            );
+            log.debug("Evento {} enviado para fila RabbitMQ", evento);
+        } catch (Exception e) {
+            log.error("Erro ao enviar evento {} para fila", evento, e);
+        }
     }
 }

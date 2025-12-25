@@ -1,5 +1,6 @@
 package br.gov.md.parla_md_backend.domain.dto;
 
+
 public record RankingParlamentarDTO(
         Integer posicao,
         String parlamentarId,

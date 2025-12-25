@@ -1,6 +1,5 @@
 package br.gov.md.parla_md_backend.domain.dto;
 
-
 import br.gov.md.parla_md_backend.domain.enums.NivelConfianca;
 import br.gov.md.parla_md_backend.domain.enums.TendenciaVoto;
 import jakarta.validation.constraints.NotBlank;

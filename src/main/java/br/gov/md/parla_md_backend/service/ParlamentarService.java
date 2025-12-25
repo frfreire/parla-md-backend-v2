@@ -2,9 +2,9 @@ package br.gov.md.parla_md_backend.service;
 
 import br.gov.md.parla_md_backend.domain.Parlamentar;
 import br.gov.md.parla_md_backend.domain.Proposicao;
-import br.gov.md.parla_md_backend.domain.Votacao;
-import br.gov.md.parla_md_backend.domain.enums.TipoParlamentar;
-import br.gov.md.parla_md_backend.repository.IParlamentarRepository;
+import br.gov.md.parla_md_backend.domain.old.Votacao;
+import br.gov.md.parla_md_backend.domain.enums.old.TipoParlamentar;
+import br.gov.md.parla_md_backend.repository.old.IParlamentarRepository;
 import br.gov.md.parla_md_backend.repository.IProposicaoRepository;
 import br.gov.md.parla_md_backend.repository.IVotacaoRepository;
 import jakarta.annotation.PostConstruct;

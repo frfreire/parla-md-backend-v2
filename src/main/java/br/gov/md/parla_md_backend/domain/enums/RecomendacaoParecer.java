@@ -32,4 +32,5 @@ public enum RecomendacaoParecer {
     public boolean isContrario() {
         return this == CONTRARIO;
     }
+
 }

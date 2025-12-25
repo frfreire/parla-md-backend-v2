@@ -52,4 +52,5 @@ public class EncaminhamentoDTO {
     private String motivoTramitacao;
 
     private String observacoes;
+
 }

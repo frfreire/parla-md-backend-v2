@@ -101,4 +101,5 @@ public class PreferenciasNotificacao {
         return !agora.isBefore(inicioNaoPerturbe) &&
                 !agora.isAfter(fimNaoPerturbe);
     }
+
 }

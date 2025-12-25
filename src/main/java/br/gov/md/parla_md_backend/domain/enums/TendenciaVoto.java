@@ -22,4 +22,5 @@ public enum TendenciaVoto {
     public String getDetalhe() {
         return detalhe;
     }
+
 }

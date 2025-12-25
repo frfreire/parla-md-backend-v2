@@ -1,6 +1,7 @@
 package br.gov.md.parla_md_backend.domain.enums;
 
 public enum TipoProposicao {
+
     PL("Projeto de Lei"),
     PLP("Projeto de Lei Complementar"),
     PEC("Proposta de Emenda à Constituição"),

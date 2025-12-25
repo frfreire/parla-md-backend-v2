@@ -8,10 +8,6 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
-/**
- * Alinhamento com governo em período específico
- * Embarcado em PerfilParlamentar
- */
 @Data
 @Builder
 @NoArgsConstructor

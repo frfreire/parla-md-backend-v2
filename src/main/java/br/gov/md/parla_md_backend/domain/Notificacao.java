@@ -52,11 +52,9 @@ public class Notificacao {
     private String mensagem;
     private String mensagemDetalhada;
 
-    // Contexto
     private String entidadeRelacionadaTipo; // "PROCESSO", "TRAMITACAO", "PARECER"
     private String entidadeRelacionadaId;
 
-    // Ação (link para onde o usuário deve ir)
     private String urlAcao;
     private String textoAcao; // "Visualizar Processo", "Responder Tramitação"
 
@@ -81,7 +79,6 @@ public class Notificacao {
 
     private LocalDateTime dataExpiracao;
 
-    // Agrupamento (para notificações que podem ser agrupadas)
     private String grupoNotificacao;
     @Builder.Default
     private boolean notificacaoAgrupada = false;

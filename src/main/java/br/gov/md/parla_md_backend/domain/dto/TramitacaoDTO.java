@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
@@ -33,4 +34,11 @@ public class TramitacaoDTO {
     private boolean urgente;
     private String motivoTramitacao;
     private String observacoes;
+
+    public TramitacaoDTO(String remetenteId) {
+        this.remetenteId = remetenteId;
+    }
+
+    public TramitacaoDTO(String id, String processoId, TipoTramitacao tipo, String remetenteId, String remetenteTipo, String remetenteNome, String destinatarioId, String destinatarioTipo, String destinatarioNome, String despacho, String observacoes, StatusTramitacao status, boolean urgente, LocalDateTime dataEnvio, LocalDateTime dataRecebimento, LocalDateTime dataConclusao, LocalDate prazo, LocalDateTime dataCriacao) {
+    }
 }

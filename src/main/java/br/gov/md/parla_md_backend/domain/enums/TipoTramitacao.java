@@ -39,4 +39,5 @@ public enum TipoTramitacao {
     public boolean isEncaminhamento() {
         return this == ENCAMINHAMENTO;
     }
+
 }

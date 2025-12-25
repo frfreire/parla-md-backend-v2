@@ -43,4 +43,5 @@ public class PermissaoAcesso {
     public boolean isValida() {
         return ativa && !isExpirada();
     }
+
 }

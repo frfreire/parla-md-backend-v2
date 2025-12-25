@@ -9,9 +9,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- * Classe abstrata base para itens legislativos (Proposições e Matérias)
- */
 @Data
 @Document(collection = "itens_legislativos")
 public abstract class ItemLegislativo {
@@ -49,13 +46,7 @@ public abstract class ItemLegislativo {
 
     protected String linkPaginaCasa;
 
-    /**
-     * Retorna identificador único completo (ex: PL 1234/2024, PLS 567/2024)
-     */
     public abstract String getIdentificadorCompleto();
 
-    /**
-     * Retorna o tipo específico do item (ex: PL, PEC para Câmara; PLS, PEC para Senado)
-     */
     public abstract String getTipo();
 }

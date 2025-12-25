@@ -1,5 +1,6 @@
 package br.gov.md.parla_md_backend.domain.dto;
 
+
 public record MetricasDesempenhoDTO(
         Double taxaPresenca,
         Integer proposicoesApresentadas,

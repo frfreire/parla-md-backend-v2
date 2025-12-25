@@ -1,7 +1,7 @@
 package br.gov.md.parla_md_backend.controller;
 
 import br.gov.md.parla_md_backend.service.UsuarioService;
-import br.gov.md.parla_md_backend.domain.dto.UsuarioDTO;
+import br.gov.md.parla_md_backend.domain.dto.old.UsuarioDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;

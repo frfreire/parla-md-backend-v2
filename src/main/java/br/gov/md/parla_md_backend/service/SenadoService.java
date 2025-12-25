@@ -2,11 +2,11 @@ package br.gov.md.parla_md_backend.service;
 
 import br.gov.md.parla_md_backend.domain.Materia;
 import br.gov.md.parla_md_backend.domain.Parlamentar;
-import br.gov.md.parla_md_backend.domain.ProcedimentoProposicao;
+import br.gov.md.parla_md_backend.domain.old.ProcedimentoProposicao;
 import br.gov.md.parla_md_backend.repository.IMateriaRepository;
 import br.gov.md.parla_md_backend.messaging.RabbitMQProducer;
 import br.gov.md.parla_md_backend.repository.IProcedimentoProposicaoRepository;
-import br.gov.md.parla_md_backend.repository.ISenadoRepository;
+import br.gov.md.parla_md_backend.repository.old.ISenadoRepository;
 import br.gov.md.parla_md_backend.util.ApiClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;

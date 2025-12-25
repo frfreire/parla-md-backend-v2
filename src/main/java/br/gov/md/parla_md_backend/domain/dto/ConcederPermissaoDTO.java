@@ -18,4 +18,6 @@ public record ConcederPermissaoDTO(
 
         LocalDateTime dataExpiracao,
         String justificativa
-) {}
+) {
+
+}

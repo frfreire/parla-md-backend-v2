@@ -6,9 +6,6 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-/**
- * Matéria legislativa do Senado Federal
- */
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Document(collection = "materias")

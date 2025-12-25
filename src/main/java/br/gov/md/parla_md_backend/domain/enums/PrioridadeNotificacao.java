@@ -26,4 +26,5 @@ public enum PrioridadeNotificacao {
     public boolean isMaiorQue(PrioridadeNotificacao outra) {
         return this.nivel > outra.nivel;
     }
+
 }

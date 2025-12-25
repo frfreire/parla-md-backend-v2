@@ -1,15 +1,11 @@
 package br.gov.md.parla_md_backend.service;
 
-import br.gov.md.parla_md_backend.domain.ProcessoLegislativo;
+import br.gov.md.parla_md_backend.domain.*;
+import br.gov.md.parla_md_backend.domain.dto.CriarProcessoDTO;
+import br.gov.md.parla_md_backend.domain.dto.ProcessoLegislativoDTO;
 import br.gov.md.parla_md_backend.domain.enums.StatusProcesso;
-import br.gov.md.parla_md_backend.domain.processo.PrioridadeProcesso;
-import br.gov.md.parla_md_backend.domain.proposicao.Proposicao;
-import br.gov.md.parla_md_backend.dto.processo.CriarProcessoDTO;
-import br.gov.md.parla_md_backend.dto.processo.ProcessoLegislativoDTO;
-import br.gov.md.parla_md_backend.exception.ProcessoNaoEncontradoException;
-import br.gov.md.parla_md_backend.exception.ProposicaoNaoEncontradaException;
-import br.gov.md.parla_md_backend.repository.IProcessoLegislativoRepository;
-import br.gov.md.parla_md_backend.repository.IProposicaoRepository;
+import br.gov.md.parla_md_backend.exception.RecursoNaoEncontradoException;
+import br.gov.md.parla_md_backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -19,11 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
-/**
- * Serviço para gerenciamento de processos legislativos
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -31,324 +23,162 @@ public class ProcessoLegislativoService {
 
     private final IProcessoLegislativoRepository processoRepository;
     private final IProposicaoRepository proposicaoRepository;
+    private final IMateriaRepository materiaRepository;
+    private final ISetorRepository setorRepository;
+    private final IUsuarioRepository usuarioRepository;
 
-    /**
-     * Cria um novo processo legislativo
-     */
     @Transactional
-    public ProcessoLegislativoDTO criarProcesso(CriarProcessoDTO dto, String usuarioId) {
-        log.info("Criando novo processo legislativo: {}", dto.getTitulo());
+    public ProcessoLegislativo criar(CriarProcessoDTO dto, String criadorId) {
+        if (processoRepository.existsByNumero(dto.getNumeroProcesso())) {
+            throw new IllegalArgumentException("Já existe processo com este número");
+        }
 
-        validarProposicoes(dto.getProposicaoIds());
+        Usuario criador = usuarioRepository.findById(criadorId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado"));
 
-        String numeroProcesso = gerarNumeroProcesso();
-
-        List<Proposicao> proposicoes = proposicaoRepository.findAllById(dto.getProposicaoIds());
+        Setor setor = setorRepository.findById(dto.getSetorResponsavel())
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Setor não encontrado"));
 
         ProcessoLegislativo processo = ProcessoLegislativo.builder()
-                .numero(numeroProcesso)
+                .numero(dto.getNumeroProcesso())
                 .titulo(dto.getTitulo())
                 .descricao(dto.getDescricao())
-                .temaPrincipal(dto.getTemaPrincipal())
+                .status(StatusProcesso.INICIADO)
                 .prioridade(dto.getPrioridade())
-                .status(StatusProcesso.CRIADO)
-                .proposicoesVinculadas(proposicoes)
-                .setorResponsavel(dto.getSetorResponsavel())
-                .analistaResponsavel(usuarioId)
-                .dataCriacao(LocalDateTime.now())
-                .dataUltimaAtualizacao(LocalDateTime.now())
-                .prazoFinal(dto.getPrazoFinal())
-                .areasImpacto(dto.getAreasImpacto())
-                .requerAnaliseJuridica(dto.isRequerAnaliseJuridica())
-                .requerAnaliseOrcamentaria(dto.isRequerAnaliseOrcamentaria())
-                .requerConsultaExterna(dto.isRequerConsultaExterna())
-                .numeroPareceresPendentes(0)
-                .numeroPosicionamentosPendentes(0)
-                .observacoes(dto.getObservacoes())
+                .temaPrincipal(dto.getTemaPrincipal())
+                .setorResponsavelId(setor.getId())
+                .setorResponsavelNome(setor.getNome())
+                .gestorId(criador.getId())
+                .gestorNome(criador.getNome())
+                .requerAnaliseJuridica(Boolean.TRUE.equals(dto.isRequerAnaliseJuridica()))
+                .requerAnaliseOrcamentaria(Boolean.TRUE.equals(dto.isRequerAnaliseOrcamentaria()))
+                .requerConsultaExterna(Boolean.TRUE.equals(dto.isRequerConsultaExterna()))
                 .build();
 
-        ProcessoLegislativo salvo = processoRepository.save(processo);
+        if (dto.getProposicaoIds() != null) {
+            dto.getProposicaoIds().forEach(processo::adicionarProposicao);
+        }
 
-        log.info("Processo legislativo criado com sucesso: {}", salvo.getNumero());
+        if (dto.getMateriaIds() != null) {
+            dto.getMateriaIds().forEach(processo::adicionarMateria);
+        }
 
-        return converterParaDTO(salvo);
+        processo = processoRepository.save(processo);
+
+        log.info("Processo legislativo {} criado por {}", processo.getNumero(), criador.getNome());
+
+        return processo;
     }
 
-    /**
-     * Busca processo por ID
-     */
     public ProcessoLegislativoDTO buscarPorId(String id) {
-        log.debug("Buscando processo por ID: {}", id);
-
         ProcessoLegislativo processo = processoRepository.findById(id)
-                .orElseThrow(() -> new ProcessoNaoEncontradoException(
-                        "Processo não encontrado com ID: " + id));
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Processo não encontrado"));
 
         return converterParaDTO(processo);
     }
 
-    /**
-     * Lista processos com paginação
-     */
-    public Page<ProcessoLegislativoDTO> listarProcessos(Pageable pageable) {
-        log.debug("Listando processos - página: {}, tamanho: {}",
-                pageable.getPageNumber(), pageable.getPageSize());
+    public ProcessoLegislativoDTO buscarPorNumero(String numero) {
+        ProcessoLegislativo processo = processoRepository.findByNumero(numero)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Processo não encontrado"));
 
+        return converterParaDTO(processo);
+    }
+
+    public Page<ProcessoLegislativoDTO> listar(Pageable pageable) {
         return processoRepository.findAll(pageable)
                 .map(this::converterParaDTO);
     }
 
-    /**
-     * Busca processos por status
-     */
-    public Page<ProcessoLegislativoDTO> buscarPorStatus(
-            StatusProcesso status,
-            Pageable pageable) {
-
-        log.debug("Buscando processos por status: {}", status);
-
+    public Page<ProcessoLegislativoDTO> buscarPorStatus(StatusProcesso status, Pageable pageable) {
         return processoRepository.findByStatus(status, pageable)
                 .map(this::converterParaDTO);
     }
 
-    /**
-     * Busca processos por setor responsável
-     */
-    public Page<ProcessoLegislativoDTO> buscarPorSetor(
-            String setorId,
-            Pageable pageable) {
-
-        log.debug("Buscando processos por setor: {}", setorId);
-
-        return processoRepository.findBySetorResponsavel(setorId, pageable)
+    public Page<ProcessoLegislativoDTO> buscarPorSetor(String setorId, Pageable pageable) {
+        return processoRepository.findBySetorResponsavelId(setorId, pageable)
                 .map(this::converterParaDTO);
     }
 
-    /**
-     * Busca processos por analista responsável
-     */
-    public Page<ProcessoLegislativoDTO> buscarPorAnalista(
-            String analistaId,
-            Pageable pageable) {
-
-        log.debug("Buscando processos por analista: {}", analistaId);
-
-        return processoRepository.findByAnalistaResponsavel(analistaId, pageable)
-                .map(this::converterParaDTO);
+    public List<ProcessoLegislativoDTO> buscarPorGestor(String gestorId) {
+        return processoRepository.findByGestorId(gestorId)
+                .stream()
+                .map(this::converterParaDTO)
+                .toList();
     }
 
-    /**
-     * Atualiza status do processo
-     */
     @Transactional
-    public ProcessoLegislativoDTO atualizarStatus(
-            String processoId,
-            StatusProcesso novoStatus,
-            String observacao) {
-
-        log.info("Atualizando status do processo {} para {}", processoId, novoStatus);
-
-        ProcessoLegislativo processo = buscarProcessoOuLancarExcecao(processoId);
-
-        validarTransicaoStatus(processo.getStatus(), novoStatus);
+    public ProcessoLegislativo atualizarStatus(String id, StatusProcesso novoStatus) {
+        ProcessoLegislativo processo = processoRepository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Processo não encontrado"));
 
         processo.setStatus(novoStatus);
-        processo.setDataUltimaAtualizacao(LocalDateTime.now());
+        processo.setDataAtualizacao(LocalDateTime.now());
 
-        if (observacao != null && !observacao.isBlank()) {
-            String obsAtual = processo.getObservacoes() != null ? processo.getObservacoes() : "";
-            processo.setObservacoes(obsAtual + "\n[" + LocalDateTime.now() + "] " + observacao);
+        if (novoStatus == StatusProcesso.FINALIZADO || novoStatus == StatusProcesso.ARQUIVADO) {
+            processo.setDataConclusao(LocalDateTime.now());
         }
 
-        if (novoStatus == StatusProcesso.FINALIZADO) {
-            processo.setDataFinalizacao(LocalDateTime.now());
-        }
+        processo = processoRepository.save(processo);
 
-        ProcessoLegislativo atualizado = processoRepository.save(processo);
+        log.info("Status do processo {} atualizado para {}", processo.getNumero(), novoStatus);
 
-        return converterParaDTO(atualizado);
+        return processo;
     }
 
-    /**
-     * Vincula proposição ao processo
-     */
     @Transactional
-    public ProcessoLegislativoDTO vincularProposicao(
-            String processoId,
-            String proposicaoId) {
+    public void adicionarProposicao(String processoId, String proposicaoId) {
+        ProcessoLegislativo processo = processoRepository.findById(processoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Processo não encontrado"));
 
-        log.info("Vinculando proposição {} ao processo {}", proposicaoId, processoId);
-
-        ProcessoLegislativo processo = buscarProcessoOuLancarExcecao(processoId);
-
-        Proposicao proposicao = proposicaoRepository.findById(proposicaoId)
-                .orElseThrow(() -> new ProposicaoNaoEncontradaException(
-                        "Proposição não encontrada: " + proposicaoId));
-
-        if (processo.getProposicoesVinculadas().stream()
-                .anyMatch(p -> p.getId().equals(proposicaoId))) {
-            throw new IllegalStateException(
-                    "Proposição já está vinculada ao processo");
+        if (!proposicaoRepository.existsById(proposicaoId)) {
+            throw new RecursoNaoEncontradoException("Proposição não encontrada");
         }
 
-        processo.getProposicoesVinculadas().add(proposicao);
-        processo.setDataUltimaAtualizacao(LocalDateTime.now());
-
-        ProcessoLegislativo atualizado = processoRepository.save(processo);
-
-        return converterParaDTO(atualizado);
-    }
-
-    /**
-     * Desvincula proposição do processo
-     */
-    @Transactional
-    public ProcessoLegislativoDTO desvincularProposicao(
-            String processoId,
-            String proposicaoId) {
-
-        log.info("Desvinculando proposição {} do processo {}", proposicaoId, processoId);
-
-        ProcessoLegislativo processo = buscarProcessoOuLancarExcecao(processoId);
-
-        boolean removido = processo.getProposicoesVinculadas()
-                .removeIf(p -> p.getId().equals(proposicaoId));
-
-        if (!removido) {
-            throw new IllegalStateException(
-                    "Proposição não está vinculada ao processo");
-        }
-
-        if (processo.getProposicoesVinculadas().isEmpty()) {
-            throw new IllegalStateException(
-                    "Processo deve ter pelo menos uma proposição vinculada");
-        }
-
-        processo.setDataUltimaAtualizacao(LocalDateTime.now());
-
-        ProcessoLegislativo atualizado = processoRepository.save(processo);
-
-        return converterParaDTO(atualizado);
-    }
-
-    /**
-     * Atualiza contador de pareceres pendentes
-     */
-    @Transactional
-    public void atualizarContagemPareceres(String processoId, int delta) {
-        ProcessoLegislativo processo = buscarProcessoOuLancarExcecao(processoId);
-
-        int novaContagem = processo.getNumeroPareceresPendentes() + delta;
-        processo.setNumeroPareceresPendentes(Math.max(0, novaContagem));
-        processo.setDataUltimaAtualizacao(LocalDateTime.now());
+        processo.adicionarProposicao(proposicaoId);
+        processo.setDataAtualizacao(LocalDateTime.now());
 
         processoRepository.save(processo);
+
+        log.info("Proposição {} adicionada ao processo {}", proposicaoId, processo.getNumero());
     }
 
-    /**
-     * Atualiza contador de posicionamentos pendentes
-     */
     @Transactional
-    public void atualizarContagemPosicionamentos(String processoId, int delta) {
-        ProcessoLegislativo processo = buscarProcessoOuLancarExcecao(processoId);
+    public void adicionarMateria(String processoId, String materiaId) {
+        ProcessoLegislativo processo = processoRepository.findById(processoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Processo não encontrado"));
 
-        int novaContagem = processo.getNumeroPosicionamentosPendentes() + delta;
-        processo.setNumeroPosicionamentosPendentes(Math.max(0, novaContagem));
-        processo.setDataUltimaAtualizacao(LocalDateTime.now());
+        if (!materiaRepository.existsById(materiaId)) {
+            throw new RecursoNaoEncontradoException("Matéria não encontrada");
+        }
+
+        processo.adicionarMateria(materiaId);
+        processo.setDataAtualizacao(LocalDateTime.now());
 
         processoRepository.save(processo);
-    }
 
-    /**
-     * Define posição final do MD
-     */
-    @Transactional
-    public ProcessoLegislativoDTO definirPosicaoFinal(
-            String processoId,
-            String posicao,
-            String justificativa,
-            String usuarioId) {
-
-        log.info("Definindo posição final do MD para processo {}", processoId);
-
-        ProcessoLegislativo processo = buscarProcessoOuLancarExcecao(processoId);
-
-        if (processo.getNumeroPareceresPendentes() > 0 ||
-                processo.getNumeroPosicionamentosPendentes() > 0) {
-            throw new IllegalStateException(
-                    "Existem pareceres ou posicionamentos pendentes");
-        }
-
-        processo.setPosicaoFinalMD(posicao);
-        processo.setJustificativaPosicaoFinal(justificativa);
-        processo.setStatus(StatusProcesso.FINALIZADO);
-        processo.setDataFinalizacao(LocalDateTime.now());
-        processo.setDataUltimaAtualizacao(LocalDateTime.now());
-
-        ProcessoLegislativo atualizado = processoRepository.save(processo);
-
-        return converterParaDTO(atualizado);
-    }
-
-    private ProcessoLegislativo buscarProcessoOuLancarExcecao(String id) {
-        return processoRepository.findById(id)
-                .orElseThrow(() -> new ProcessoNaoEncontradoException(
-                        "Processo não encontrado: " + id));
-    }
-
-    private void validarProposicoes(List<String> proposicaoIds) {
-        if (proposicaoIds == null || proposicaoIds.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "Processo deve ter pelo menos uma proposição vinculada");
-        }
-
-        List<Proposicao> proposicoes = proposicaoRepository.findAllById(proposicaoIds);
-
-        if (proposicoes.size() != proposicaoIds.size()) {
-            throw new ProposicaoNaoEncontradaException(
-                    "Uma ou mais proposições não foram encontradas");
-        }
-    }
-
-    private void validarTransicaoStatus(StatusProcesso atual, StatusProcesso novo) {
-        // Implementar lógica de validação de transições permitidas
-        // Por exemplo: CRIADO -> EM_ANALISE_INTERNA é permitido
-        // mas FINALIZADO -> CRIADO não é permitido
-    }
-
-    private String gerarNumeroProcesso() {
-        int ano = LocalDateTime.now().getYear();
-        long count = processoRepository.countByNumeroStartingWith(String.valueOf(ano));
-        return String.format("%d/%05d", ano, count + 1);
+        log.info("Matéria {} adicionada ao processo {}", materiaId, processo.getNumero());
     }
 
     private ProcessoLegislativoDTO converterParaDTO(ProcessoLegislativo processo) {
-        return ProcessoLegislativoDTO.builder()
-                .id(processo.getId())
-                .numero(processo.getNumero())
-                .titulo(processo.getTitulo())
-                .descricao(processo.getDescricao())
-                .temaPrincipal(processo.getTemaPrincipal())
-                .prioridade(processo.getPrioridade())
-                .status(processo.getStatus())
-                .proposicaoIds(processo.getProposicoesVinculadas().stream()
-                        .map(Proposicao::getId)
-                        .collect(Collectors.toList()))
-                .setorResponsavel(processo.getSetorResponsavel())
-                .analistaResponsavel(processo.getAnalistaResponsavel())
-                .dataCriacao(processo.getDataCriacao())
-                .dataUltimaAtualizacao(processo.getDataUltimaAtualizacao())
-                .prazoFinal(processo.getPrazoFinal())
-                .areasImpacto(processo.getAreasImpacto())
-                .requerAnaliseJuridica(processo.isRequerAnaliseJuridica())
-                .requerAnaliseOrcamentaria(processo.isRequerAnaliseOrcamentaria())
-                .requerConsultaExterna(processo.isRequerConsultaExterna())
-                .numeroPareceresPendentes(processo.getNumeroPareceresPendentes())
-                .numeroPosicionamentosPendentes(processo.getNumeroPosicionamentosPendentes())
-                .posicaoFinalMD(processo.getPosicaoFinalMD())
-                .justificativaPosicaoFinal(processo.getJustificativaPosicaoFinal())
-                .dataFinalizacao(processo.getDataFinalizacao())
-                .observacoes(processo.getObservacoes())
-                .build();
+        return new ProcessoLegislativoDTO(
+                processo.getId(),
+                processo.getNumero(),
+                processo.getTitulo(),
+                processo.getDescricao(),
+                processo.getStatus(),
+                processo.getPrioridade(),
+                processo.getProposicaoIds(),
+                processo.getMateriaIds(),
+                processo.getTemaPrincipal(),
+                processo.getSetorResponsavelId(),
+                processo.getSetorResponsavelNome(),
+                processo.getGestorId(),
+                processo.getGestorNome(),
+                processo.getNumeroPareceresPendentes(),
+                processo.getNumeroPosicionamentosPendentes(),
+                processo.getDataCriacao(),
+                processo.getDataAtualizacao(),
+                processo.getDataConclusao()
+        );
     }
 }

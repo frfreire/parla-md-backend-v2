@@ -32,4 +32,5 @@ public class MetricasDesempenho {
     private Integer rankingPartido;
 
     private Integer rankingEstado;
+
 }

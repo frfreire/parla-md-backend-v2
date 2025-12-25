@@ -1,6 +1,5 @@
 package br.gov.md.parla_md_backend.domain.dto;
 
-
 import br.gov.md.parla_md_backend.domain.enums.CanalNotificacao;
 import br.gov.md.parla_md_backend.domain.enums.PrioridadeNotificacao;
 import br.gov.md.parla_md_backend.domain.enums.TipoNotificacao;

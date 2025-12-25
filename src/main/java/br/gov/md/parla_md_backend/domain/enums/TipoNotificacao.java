@@ -1,7 +1,5 @@
 package br.gov.md.parla_md_backend.domain.enums;
-/**
- * Tipos de notificação do sistema
- */
+
 public enum TipoNotificacao {
 
     // Tramitação

@@ -1,6 +1,6 @@
 package br.gov.md.parla_md_backend.service;
 
-import br.gov.md.parla_md_backend.domain.dto.UsuarioDTO;
+import br.gov.md.parla_md_backend.domain.dto.old.UsuarioDTO;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;

@@ -6,9 +6,6 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-/**
- * Proposição legislativa da Câmara dos Deputados
- */
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Document(collection = "proposicoes")

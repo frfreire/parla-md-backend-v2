@@ -21,4 +21,5 @@ public record ControleVisibilidadeDTO(
             permitirVisualizacaoSuperior = true;
         }
     }
+
 }

@@ -16,6 +16,5 @@ public interface IProposicaoRepository extends MongoRepository<Proposicao, Strin
     Page<Proposicao> findByTriagemStatus(StatusTriagem status, Pageable pageable);
     List<Proposicao> findByTema(String tema);
     List<Proposicao> findByDataApresentacaoAfter(LocalDateTime date);
-
     List<Proposicao> findByDataApresentacaoBetween(LocalDateTime dataApresentacaoAfter, LocalDateTime dataApresentacaoBefore);
 }

@@ -1,19 +1,16 @@
 package br.gov.md.parla_md_backend.domain;
 
-import br.gov.md.parla_md_backend.domain.enums.TipoOrgao;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Órgão externo ao MD (Ministérios, Forças Armadas, etc)
- */
 @Data
 @Builder
 @NoArgsConstructor
@@ -24,11 +21,13 @@ public class OrgaoExterno {
     @Id
     private String id;
 
+    @Indexed
     private String nome;
 
+    @Indexed(unique = true)
     private String sigla;
 
-    private TipoOrgao tipo;
+    private String tipo;
 
     private String descricao;
 
@@ -38,11 +37,20 @@ public class OrgaoExterno {
 
     private String endereco;
 
+    @Builder.Default
     private List<Representante> representantes = new ArrayList<>();
 
-    private boolean ativo;
+    @Builder.Default
+    private boolean ativo = true;
 
     private String observacoes;
+
+    public Representante getRepresentantePrincipal() {
+        return representantes.stream()
+                .filter(Representante::isPrincipal)
+                .findFirst()
+                .orElse(null);
+    }
 
     @Data
     @Builder
@@ -53,6 +61,8 @@ public class OrgaoExterno {
         private String cargo;
         private String email;
         private String telefone;
-        private boolean principal;
+
+        @Builder.Default
+        private boolean principal = false;
     }
 }

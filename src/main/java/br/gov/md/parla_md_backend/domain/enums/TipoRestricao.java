@@ -3,9 +3,7 @@ package br.gov.md.parla_md_backend.domain.enums;
 public enum TipoRestricao {
 
     LEITURA("Leitura", "Permite apenas visualizar"),
-
     EDICAO("Edição", "Permite visualizar e editar"),
-
     TOTAL("Total", "Acesso total incluindo gestão de permissões");
 
     private final String descricao;
@@ -31,4 +29,5 @@ public enum TipoRestricao {
     public boolean permiteGestaoPermissoes() {
         return this == TOTAL;
     }
+
 }

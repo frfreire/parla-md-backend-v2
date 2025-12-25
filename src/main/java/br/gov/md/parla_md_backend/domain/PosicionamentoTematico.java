@@ -28,4 +28,5 @@ public class PosicionamentoTematico {
     private NivelConfianca nivelConfianca;
 
     private String observacoes;
+
 }

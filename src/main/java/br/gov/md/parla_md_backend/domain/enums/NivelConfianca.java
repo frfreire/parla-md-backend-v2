@@ -30,9 +30,6 @@ public enum NivelConfianca {
         return limiteSuperior;
     }
 
-    /**
-     * Determina nível de confiança a partir de probabilidade
-     */
     public static NivelConfianca fromProbabilidade(double probabilidade) {
         for (NivelConfianca nivel : values()) {
             if (probabilidade >= nivel.limiteInferior &&

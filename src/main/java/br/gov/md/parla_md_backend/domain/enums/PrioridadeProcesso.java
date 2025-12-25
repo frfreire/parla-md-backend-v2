@@ -37,4 +37,5 @@ public enum PrioridadeProcesso {
     public boolean isUrgente() {
         return this == URGENTE || this == URGENTISSIMA;
     }
+
 }

@@ -28,4 +28,5 @@ public enum TipoPosicionamento {
     public boolean isFavoravel() {
         return this == FAVORAVEL || this == FAVORAVEL_COM_RESSALVAS || this == SEM_OBJECAO;
     }
+
 }

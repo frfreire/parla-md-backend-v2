@@ -27,4 +27,5 @@ public enum StatusNotificacao {
     public boolean isFinal() {
         return this == LIDA || this == ERRO || this == CANCELADA;
     }
+
 }

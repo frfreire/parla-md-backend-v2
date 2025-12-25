@@ -22,4 +22,5 @@ public enum AlinhamentoPolitico {
     public String getDetalhe() {
         return detalhe;
     }
+
 }

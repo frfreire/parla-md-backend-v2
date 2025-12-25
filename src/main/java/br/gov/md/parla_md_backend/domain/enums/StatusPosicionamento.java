@@ -32,4 +32,5 @@ public enum StatusPosicionamento {
     public boolean isFinalizado() {
         return this == CONSOLIDADO || this == ENVIADO || this == CANCELADO;
     }
+
 }

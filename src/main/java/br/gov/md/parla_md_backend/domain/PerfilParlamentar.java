@@ -34,7 +34,6 @@ public class PerfilParlamentar {
 
     private String casa;
 
-    // Análise de Alinhamento Político
     private AlinhamentoPolitico alinhamentoGoverno;
     private double percentualAlinhamentoGoverno;
 

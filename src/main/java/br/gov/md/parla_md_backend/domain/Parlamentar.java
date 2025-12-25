@@ -11,7 +11,7 @@ import java.util.List;
 
 @Data
 @Document(collection = "parlamentares")
-public abstract class Parlamentar {
+public abstract class Parlamentar { //
 
     @Id
     protected String id;

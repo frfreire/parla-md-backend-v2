@@ -53,7 +53,6 @@ public class Tramitacao {
     private LocalDateTime dataEnvio = LocalDateTime.now();
     private LocalDateTime dataRecebimento;
     private LocalDateTime dataConclusao;
-
     private LocalDate prazo;
 
     private ControleVisibilidade controleVisibilidade;

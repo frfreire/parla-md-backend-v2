@@ -1,7 +1,6 @@
 package br.gov.md.parla_md_backend.domain;
 
 import br.gov.md.parla_md_backend.domain.enums.Casa;
-import br.gov.md.parla_md_backend.domain.parlamentar.Parlamentar;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.springframework.data.mongodb.core.mapping.Document;

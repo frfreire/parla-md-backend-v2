@@ -1,6 +1,7 @@
 package br.gov.md.parla_md_backend.domain.dto;
 
-import br.gov.md.parla_md_backend.domain.processo.PrioridadeProcesso;
+import br.gov.md.parla_md_backend.domain.AreaImpacto;
+import br.gov.md.parla_md_backend.domain.enums.PrioridadeProcesso;
 import br.gov.md.parla_md_backend.domain.enums.StatusProcesso;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,12 +25,13 @@ public class ProcessoLegislativoDTO {
     private PrioridadeProcesso prioridade;
     private StatusProcesso status;
     private List<String> proposicaoIds;
+    private List<String> materiaIds;
     private String setorResponsavel;
     private String analistaResponsavel;
     private LocalDateTime dataCriacao;
     private LocalDateTime dataUltimaAtualizacao;
     private LocalDateTime prazoFinal;
-    private List<String> areasImpacto;
+    private List<AreaImpacto> areasImpacto;
     private boolean requerAnaliseJuridica;
     private boolean requerAnaliseOrcamentaria;
     private boolean requerConsultaExterna;
@@ -39,4 +41,7 @@ public class ProcessoLegislativoDTO {
     private String justificativaPosicaoFinal;
     private LocalDateTime dataFinalizacao;
     private String observacoes;
+
+    public ProcessoLegislativoDTO(String id, String numero, String titulo, String descricao, StatusProcesso status, PrioridadeProcesso prioridade, List<String> proposicaoIds, List<String> materiaIds, String temaPrincipal, String setorResponsavelId, String setorResponsavelNome, String gestorId, String gestorNome, int numeroPareceresPendentes, int numeroPosicionamentosPendentes, LocalDateTime dataCriacao, LocalDateTime dataAtualizacao, LocalDateTime dataConclusao) {
+    }
 }

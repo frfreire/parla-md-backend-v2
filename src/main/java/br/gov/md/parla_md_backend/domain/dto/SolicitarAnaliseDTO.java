@@ -2,7 +2,6 @@ package br.gov.md.parla_md_backend.domain.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
-
 import java.util.List;
 
 public record SolicitarAnaliseDTO(

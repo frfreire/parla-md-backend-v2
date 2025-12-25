@@ -1,5 +1,6 @@
 package br.gov.md.parla_md_backend.domain;
 
+import br.gov.md.parla_md_backend.domain.enums.StatusPosicionamento;
 import br.gov.md.parla_md_backend.domain.enums.TipoPosicionamento;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,9 +13,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Posicionamento institucional de órgão externo ao MD
- */
 @Data
 @Builder
 @NoArgsConstructor

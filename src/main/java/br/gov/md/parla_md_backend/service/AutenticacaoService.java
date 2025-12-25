@@ -1,6 +1,6 @@
 package br.gov.md.parla_md_backend.service;
 
-import br.gov.md.parla_md_backend.domain.dto.UsuarioDTO;
+import br.gov.md.parla_md_backend.domain.dto.old.UsuarioDTO;
 import br.gov.md.parla_md_backend.exception.AutenticacaoException;
 import br.gov.md.parla_md_backend.exception.TokenInvalidoException;
 import org.slf4j.Logger;
@@ -14,8 +14,6 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.web.authentication.preauth.PreAuthenticatedAuthenticationToken;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 

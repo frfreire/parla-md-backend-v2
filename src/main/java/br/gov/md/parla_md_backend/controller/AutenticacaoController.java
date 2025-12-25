@@ -1,9 +1,9 @@
 package br.gov.md.parla_md_backend.controller;
 
-import br.gov.md.parla_md_backend.domain.dto.AutenticacaoConfigDTO;
-import br.gov.md.parla_md_backend.domain.dto.PermissaoDTO;
-import br.gov.md.parla_md_backend.domain.dto.TokenValidationDTO;
-import br.gov.md.parla_md_backend.domain.dto.UsuarioInfoDTO;
+import br.gov.md.parla_md_backend.domain.dto.old.AutenticacaoConfigDTO;
+import br.gov.md.parla_md_backend.domain.dto.old.PermissaoDTO;
+import br.gov.md.parla_md_backend.domain.dto.old.TokenValidationDTO;
+import br.gov.md.parla_md_backend.domain.dto.old.UsuarioInfoDTO;
 import br.gov.md.parla_md_backend.service.AutenticacaoApiService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

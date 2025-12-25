@@ -7,10 +7,6 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
-/**
- * Registro de comportamento de votação
- * Embarcado em PerfilParlamentar
- */
 @Data
 @Builder
 @NoArgsConstructor

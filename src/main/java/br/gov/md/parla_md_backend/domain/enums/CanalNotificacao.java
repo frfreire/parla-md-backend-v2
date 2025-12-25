@@ -22,4 +22,5 @@ public enum CanalNotificacao {
     public String getDescricao() {
         return descricao;
     }
+
 }
