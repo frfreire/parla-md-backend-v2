@@ -34,4 +34,6 @@ public interface IPosicionamentoRepository extends MongoRepository<Posicionament
     long countByNumeroStartingWith(String prefixo);
 
     long countByProcessoIdAndStatus(String processoId, StatusPosicionamento status);
+
+    long countByStatus(StatusPosicionamento status);
 }

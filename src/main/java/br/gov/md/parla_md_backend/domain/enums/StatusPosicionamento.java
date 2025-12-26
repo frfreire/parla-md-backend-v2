@@ -7,7 +7,8 @@ public enum StatusPosicionamento {
     EM_ANALISE("Em Análise", "Em análise interna"),
     CONSOLIDADO("Consolidado", "Posicionamento consolidado"),
     ENVIADO("Enviado", "Posicionamento enviado ao solicitante"),
-    CANCELADO("Cancelado", "Posicionamento cancelado");
+    CANCELADO("Cancelado", "Posicionamento cancelado"),
+    SOLICITADO("Solicitado", "Pedido de posicionamento");
 
     private final String descricao;
     private final String detalhe;

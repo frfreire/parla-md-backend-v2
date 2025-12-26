@@ -1,6 +1,7 @@
 package br.gov.md.parla_md_backend.repository;
 
 import br.gov.md.parla_md_backend.domain.Parecer;
+import br.gov.md.parla_md_backend.domain.enums.StatusParecer;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
@@ -28,4 +29,11 @@ public interface IParecerRepository extends MongoRepository<Parecer, String> {
     long countByNumeroStartingWith(String prefixo);
 
     long countByProcessoIdAndDataAprovacaoIsNotNull(String processoId);
+
+    Long countByStatusEmElaboracao();
+
+    long countByStatus(StatusParecer status);
+
+
+
 }
