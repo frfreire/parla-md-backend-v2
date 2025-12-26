@@ -1,7 +1,6 @@
 package br.gov.md.parla_md_backend.controller;
 
 import br.gov.md.parla_md_backend.domain.Materia;
-import br.gov.md.parla_md_backend.domain.old.ProcedimentoProposicao;
 import br.gov.md.parla_md_backend.domain.Proposicao;
 import br.gov.md.parla_md_backend.service.*;
 import br.gov.md.parla_md_backend.service.ai.PredictionService;

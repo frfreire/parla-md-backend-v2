@@ -1,6 +1,7 @@
 package br.gov.md.parla_md_backend.domain;
 
 import br.gov.md.parla_md_backend.domain.enums.Casa;
+import br.gov.md.parla_md_backend.domain.enums.StatusTramitacao;
 import br.gov.md.parla_md_backend.domain.enums.TipoProposicao;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -44,6 +45,8 @@ public class Proposicao extends ItemLegislativo {
     private String regime;
 
     private boolean apreciacao;
+
+    private StatusTramitacao statusTramitacao;
 
     public Proposicao() {
         this.casa = Casa.CAMARA;

@@ -3,7 +3,7 @@ package br.gov.md.parla_md_backend.service;
 import br.gov.md.parla_md_backend.domain.old.Encaminhamento;
 import br.gov.md.parla_md_backend.domain.Proposicao;
 import br.gov.md.parla_md_backend.domain.enums.old.StatusEncaminhamento;
-import br.gov.md.parla_md_backend.domain.enums.old.StatusParecer;
+import br.gov.md.parla_md_backend.domain.enums.StatusParecer;
 import br.gov.md.parla_md_backend.domain.enums.StatusTriagem;
 import br.gov.md.parla_md_backend.repository.IEncaminhamentoRepository;
 import br.gov.md.parla_md_backend.repository.IProposicaoRepository;
