@@ -9,9 +9,6 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.Duration;
 
-/**
- * Configuração do cliente Ollama para comunicação com LLM
- */
 @Configuration
 public class OllamaConfig {
 
@@ -23,8 +20,7 @@ public class OllamaConfig {
 
     @Bean(name = "ollamaRestTemplate")
     public RestTemplate ollamaRestTemplate() {
-        RestTemplate restTemplate = new RestTemplate(clientHttpRequestFactory());
-        return restTemplate;
+        return new RestTemplate(clientHttpRequestFactory());
     }
 
     private ClientHttpRequestFactory clientHttpRequestFactory() {

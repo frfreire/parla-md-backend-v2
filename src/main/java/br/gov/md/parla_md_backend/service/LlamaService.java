@@ -1,17 +1,32 @@
 package br.gov.md.parla_md_backend.service;
 
+import br.gov.md.parla_md_backend.config.OllamaConfig;
+import br.gov.md.parla_md_backend.domain.dto.RequisicaoLlamaDTO;
+import br.gov.md.parla_md_backend.domain.dto.RespostaLlamaDTO;
+import br.gov.md.parla_md_backend.domain.InteracaoLlama;
+import br.gov.md.parla_md_backend.exception.IAException;
+import br.gov.md.parla_md_backend.exception.LlamaIndisponivelException;
+import br.gov.md.parla_md_backend.exception.LlamaTimeoutException;
+import br.gov.md.parla_md_backend.repository.IInteracaoLlamaRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
+import org.springframework.http.*;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Service
@@ -19,106 +34,296 @@ import java.util.Map;
 public class LlamaService {
 
     private final RestTemplate restTemplate;
-
-    @Value("${ollama.api.url:http://ollama:11434}")
-    private String ollamaUrl;
+    private final OllamaConfig ollamaConfig;
+    private final ObjectMapper objectMapper;
+    private final IInteracaoLlamaRepository interacaoRepository;
+    private final MeterRegistry meterRegistry;
 
     @Value("${ollama.model:llama3.2:3b}")
-    private String model;
-
-    @Value("${ollama.timeout:60000}")
-    private int timeout;
+    private String modeloPadrao;
 
     @Value("${ollama.temperature:0.7}")
-    private double temperature;
+    private Double temperaturePadrao;
 
-    @Cacheable(value = "llm-responses", key = "#prompt.hashCode()")
-    public String generate(String prompt) {
-        return generate(prompt, null);
+    @Value("${cache.llm.ttl:3600}")
+    private int cacheTtlSegundos;
+
+    public RespostaLlamaDTO enviarRequisicao(String promptUsuario) {
+        return enviarRequisicao(promptUsuario, null, false);
     }
 
-    @Cacheable(value = "llm-responses", key = "#prompt.hashCode() + '-' + #systemPrompt.hashCode()")
-    public String generate(String prompt, String systemPrompt) {
-        log.debug("Gerando resposta LLM para prompt de {} caracteres", prompt.length());
+    @Retryable(
+            value = {ResourceAccessException.class, RestClientException.class},
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 1000, multiplier = 2)
+    )
+    @Transactional
+    public RespostaLlamaDTO enviarRequisicao(
+            String promptUsuario,
+            String promptSistema,
+            boolean respostaJson) {
 
-        String url = ollamaUrl + "/api/generate";
-
-        Map<String, Object> requestBody = Map.of(
-                "model", model,
-                "prompt", prompt,
-                "system", systemPrompt != null ? systemPrompt : "",
-                "stream", false,
-                "options", Map.of(
-                        "temperature", temperature,
-                        "num_predict", 2048
-                )
-        );
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+        long inicioMs = System.currentTimeMillis();
 
         try {
-            Map<String, Object> response = restTemplate.postForObject(url, request, Map.class);
+            validarPrompt(promptUsuario);
 
-            if (response != null && response.containsKey("response")) {
-                String result = (String) response.get("response");
-                log.info("Resposta LLM gerada com sucesso - {} caracteres", result.length());
-                return result;
-            }
+            RequisicaoLlamaDTO requisicao = construirRequisicao(
+                    promptUsuario,
+                    promptSistema,
+                    respostaJson
+            );
 
-            throw new RuntimeException("Resposta inválida do Ollama");
+            log.info("Enviando requisição Llama: {} caracteres", promptUsuario.length());
 
-        } catch (Exception e) {
-            log.error("Erro ao chamar Ollama API", e);
-            throw new RuntimeException("Erro ao gerar resposta LLM", e);
+            RespostaLlamaDTO resposta = executarRequisicao(requisicao);
+
+            validarResposta(resposta);
+
+            long duracaoMs = System.currentTimeMillis() - inicioMs;
+
+            registrarSucesso(requisicao, resposta, duracaoMs);
+            registrarMetrica("llama.requisicao.sucesso", duracaoMs);
+
+            log.info("Resposta Llama recebida: {} tokens", resposta.getEvalCount());
+
+            return resposta;
+
+        } catch (ResourceAccessException e) {
+            long duracaoMs = System.currentTimeMillis() - inicioMs;
+            registrarFalha(promptUsuario, promptSistema, e.getMessage(), duracaoMs);
+            registrarMetrica("llama.requisicao.indisponivel", duracaoMs);
+
+            log.error("Ollama indisponível: {}", e.getMessage());
+            throw LlamaIndisponivelException.erroConexao(e);
+
+        } catch (RestClientException e) {
+            long duracaoMs = System.currentTimeMillis() - inicioMs;
+            registrarFalha(promptUsuario, promptSistema, e.getMessage(), duracaoMs);
+            registrarMetrica("llama.requisicao.erro", duracaoMs);
+
+            log.error("Erro ao comunicar com Llama", e);
+            throw IAException.processingError(e.getMessage(), e);
         }
     }
 
-    public String chat(List<Map<String, String>> messages) {
-        log.debug("Gerando resposta LLM via chat com {} mensagens", messages.size());
-
-        String url = ollamaUrl + "/api/chat";
-
-        Map<String, Object> requestBody = Map.of(
-                "model", model,
-                "messages", messages,
-                "stream", false,
-                "options", Map.of("temperature", temperature)
-        );
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
-
+    public <T> T extrairJson(RespostaLlamaDTO resposta, Class<T> classe) {
         try {
-            Map<String, Object> response = restTemplate.postForObject(url, request, Map.class);
+            String conteudo = extrairConteudo(resposta);
+            String conteudoLimpo = limparMarkdown(conteudo);
 
-            if (response != null && response.containsKey("message")) {
-                Map<String, String> message = (Map<String, String>) response.get("message");
-                String result = message.get("content");
-                log.info("Resposta LLM chat gerada com sucesso");
-                return result;
-            }
+            return objectMapper.readValue(conteudoLimpo, classe);
 
-            throw new RuntimeException("Resposta inválida do Ollama");
-
-        } catch (Exception e) {
-            log.error("Erro ao chamar Ollama Chat API", e);
-            throw new RuntimeException("Erro ao gerar resposta LLM", e);
+        } catch (JsonProcessingException e) {
+            log.error("Erro ao parsear JSON: {}", resposta.getMessage().getContent(), e);
+            throw IAException.respostaInvalida("JSON malformado");
         }
     }
 
-    public boolean isModelAvailable() {
+    @Cacheable(value = "llama-disponibilidade", key = "'status'")
+    public boolean verificarDisponibilidade() {
         try {
-            String url = ollamaUrl + "/api/tags";
-            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
-            return response != null;
+            String url = ollamaConfig.getOllamaUrl() + "/api/tags";
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+
+            boolean disponivel = response.getStatusCode().is2xxSuccessful();
+
+            registrarMetrica(
+                    disponivel ? "llama.disponibilidade.online" : "llama.disponibilidade.offline",
+                    1
+            );
+
+            return disponivel;
+
         } catch (Exception e) {
-            log.error("Erro ao verificar disponibilidade do modelo", e);
+            log.warn("Ollama indisponível: {}", e.getMessage());
+            registrarMetrica("llama.disponibilidade.erro", 1);
             return false;
         }
+    }
+
+    public List<InteracaoLlama> buscarHistorico(String usuarioId) {
+        return interacaoRepository.findByUsuarioId(usuarioId);
+    }
+
+    public List<InteracaoLlama> buscarFalhasRecentes(int ultimasHoras) {
+        LocalDateTime limite = LocalDateTime.now().minusHours(ultimasHoras);
+        return interacaoRepository.buscarFalhasRecentes(limite);
+    }
+
+    @Transactional
+    public void limparExpirados() {
+        LocalDateTime agora = LocalDateTime.now();
+        List<InteracaoLlama> expirados = interacaoRepository.buscarExpiradas(agora);
+
+        if (!expirados.isEmpty()) {
+            interacaoRepository.deleteAll(expirados);
+            log.info("Removidas {} interações expiradas", expirados.size());
+        }
+    }
+
+    private void validarPrompt(String prompt) {
+        if (prompt == null || prompt.isBlank()) {
+            throw new IllegalArgumentException("Prompt não pode ser vazio");
+        }
+
+        if (prompt.length() > 100000) {
+            throw new IllegalArgumentException("Prompt excede limite de 100.000 caracteres");
+        }
+    }
+
+    private RespostaLlamaDTO executarRequisicao(RequisicaoLlamaDTO requisicao) {
+        String url = ollamaConfig.getOllamaUrl() + "/api/chat";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<RequisicaoLlamaDTO> entity = new HttpEntity<>(requisicao, headers);
+
+        ResponseEntity<RespostaLlamaDTO> response = restTemplate.postForEntity(
+                url,
+                entity,
+                RespostaLlamaDTO.class
+        );
+
+        return response.getBody();
+    }
+
+    private void validarResposta(RespostaLlamaDTO resposta) {
+        if (resposta == null || resposta.getDone() == null || !resposta.getDone()) {
+            throw IAException.respostaIncompleta();
+        }
+
+        if (resposta.getMessage() == null || resposta.getMessage().getContent() == null) {
+            throw IAException.respostaInvalida("Conteúdo vazio");
+        }
+    }
+
+    private RequisicaoLlamaDTO construirRequisicao(
+            String promptUsuario,
+            String promptSistema,
+            boolean respostaJson) {
+
+        RequisicaoLlamaDTO.RequisicaoLlamaDTOBuilder builder = RequisicaoLlamaDTO.builder()
+                .model(modeloPadrao)
+                .stream(false)
+                .options(construirOpcoes());
+
+        builder.messages(construirMensagens(promptUsuario, promptSistema));
+
+        if (respostaJson) {
+            builder.format("json");
+        }
+
+        return builder.build();
+    }
+
+    private RequisicaoLlamaDTO.Options construirOpcoes() {
+        return RequisicaoLlamaDTO.Options.builder()
+                .temperature(temperaturePadrao)
+                .topP(0.9)
+                .topK(40)
+                .numPredict(2048)
+                .build();
+    }
+
+    private List<RequisicaoLlamaDTO.Mensagem> construirMensagens(
+            String promptUsuario,
+            String promptSistema) {
+
+        List<RequisicaoLlamaDTO.Mensagem> mensagens = new ArrayList<>();
+
+        if (promptSistema != null && !promptSistema.isBlank()) {
+            mensagens.add(construirMensagem("system", promptSistema));
+        }
+
+        mensagens.add(construirMensagem("user", promptUsuario));
+
+        return mensagens;
+    }
+
+    private RequisicaoLlamaDTO.Mensagem construirMensagem(String role, String content) {
+        return RequisicaoLlamaDTO.Mensagem.builder()
+                .role(role)
+                .content(content)
+                .build();
+    }
+
+    private String extrairConteudo(RespostaLlamaDTO resposta) {
+        return resposta.getMessage().getContent();
+    }
+
+    private String limparMarkdown(String conteudo) {
+        return conteudo
+                .replaceAll("```json\\s*", "")
+                .replaceAll("```\\s*", "")
+                .trim();
+    }
+
+    private void registrarSucesso(
+            RequisicaoLlamaDTO requisicao,
+            RespostaLlamaDTO resposta,
+            long duracaoMs) {
+
+        InteracaoLlama interacao = InteracaoLlama.builder()
+                .modelo(requisicao.getModel())
+                .promptUsuario(extrairPromptUsuario(requisicao))
+                .promptSistema(extrairPromptSistema(requisicao))
+                .respostaConteudo(resposta.getMessage().getContent())
+                .respostaJson(requisicao.getFormat() != null)
+                .sucesso(true)
+                .dataHoraRequisicao(LocalDateTime.now())
+                .duracaoTotalMs(resposta.getTotalDuration() != null ?
+                        resposta.getTotalDuration() / 1_000_000 : duracaoMs)
+                .duracaoCarregamentoMs(resposta.getLoadDuration() != null ?
+                        resposta.getLoadDuration() / 1_000_000 : null)
+                .tokensPrompt(resposta.getPromptEvalCount())
+                .tokensResposta(resposta.getEvalCount())
+                .temperature(requisicao.getOptions().getTemperature())
+                .dataExpiracao(LocalDateTime.now().plusSeconds(cacheTtlSegundos))
+                .build();
+
+        interacaoRepository.save(interacao);
+    }
+
+    private void registrarFalha(
+            String promptUsuario,
+            String promptSistema,
+            String mensagemErro,
+            long duracaoMs) {
+
+        InteracaoLlama interacao = InteracaoLlama.builder()
+                .modelo(modeloPadrao)
+                .promptUsuario(promptUsuario)
+                .promptSistema(promptSistema)
+                .sucesso(false)
+                .mensagemErro(mensagemErro)
+                .dataHoraRequisicao(LocalDateTime.now())
+                .duracaoTotalMs(duracaoMs)
+                .temperature(temperaturePadrao)
+                .dataExpiracao(LocalDateTime.now().plusSeconds(cacheTtlSegundos))
+                .build();
+
+        interacaoRepository.save(interacao);
+    }
+
+    private void registrarMetrica(String nomeMetrica, long valor) {
+        meterRegistry.counter(nomeMetrica).increment(valor);
+    }
+
+    private String extrairPromptUsuario(RequisicaoLlamaDTO requisicao) {
+        return requisicao.getMessages().stream()
+                .filter(m -> "user".equals(m.getRole()))
+                .findFirst()
+                .map(RequisicaoLlamaDTO.Mensagem::getContent)
+                .orElse(null);
+    }
+
+    private String extrairPromptSistema(RequisicaoLlamaDTO requisicao) {
+        return requisicao.getMessages().stream()
+                .filter(m -> "system".equals(m.getRole()))
+                .findFirst()
+                .map(RequisicaoLlamaDTO.Mensagem::getContent)
+                .orElse(null);
     }
 }
