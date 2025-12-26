@@ -1,184 +1,360 @@
 package br.gov.md.parla_md_backend.service;
 
+import br.gov.md.parla_md_backend.domain.dto.*;
+import br.gov.md.parla_md_backend.domain.Previsao;
 import br.gov.md.parla_md_backend.domain.ItemLegislativo;
-import br.gov.md.parla_md_backend.domain.enums.NivelConfianca;
-import br.gov.md.parla_md_backend.domain.PerfilParlamentar;
-import br.gov.md.parla_md_backend.domain.enums.TendenciaVoto;
-import br.gov.md.parla_md_backend.domain.dto.AnalisePreditivaDTO;
-import br.gov.md.parla_md_backend.domain.dto.PrevisaoVotoDTO;
+import br.gov.md.parla_md_backend.exception.ModeloNaoTreinadoException;
+import br.gov.md.parla_md_backend.exception.PrevisaoException;
 import br.gov.md.parla_md_backend.exception.RecursoNaoEncontradoException;
-import br.gov.md.parla_md_backend.repository.IPerfilParlamentarRepository;
-import br.gov.md.parla_md_backend.repository.IProposicaoRepository;
+import br.gov.md.parla_md_backend.repository.IItemLegislativoRepository;
+import br.gov.md.parla_md_backend.repository.IPrevisaoRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class PrevisaoService {
 
-    private final LlamaService llama;
-    private final IPerfilParlamentarRepository perfilRepository;
-    private final IProposicaoRepository proposicaoRepository;
+    private final LlamaService llamaService;
+    private final IPrevisaoRepository previsaoRepository;
+    private final IItemLegislativoRepository itemLegislativoRepository;
     private final ObjectMapper objectMapper;
 
-    public AnalisePreditivaDTO preverAprovacao(String proposicaoId) {
-        ItemLegislativo item = proposicaoRepository.findById(proposicaoId)
-                .orElseThrow(() -> new RecursoNaoEncontradoException("Proposição não encontrada"));
+    @Value("${previsao.cache.ttl:86400}")
+    private int cacheTtlSegundos;
 
-        List<PerfilParlamentar> perfis = perfilRepository.findByCasa(item.getCasa().name());
+    @Value("${previsao.modelo.versao:1.0.0}")
+    private String modeloVersao;
 
-        String prompt = construirPromptPredicao(item, perfis);
-        String systemPrompt = """
-                Você é um especialista em análise política e previsão de votações legislativas.
-                Sua tarefa é analisar dados históricos de parlamentares e prever comportamentos de votação.
-                Sempre forneça análises baseadas em dados, com níveis de confiança apropriados.
-                Responda sempre em formato JSON estruturado.
-                """;
+    @Transactional
+    public PrevisaoDTO prever(SolicitarPrevisaoDTO request) {
+        long inicioMs = System.currentTimeMillis();
 
-        String resposta = llama.generate(prompt, systemPrompt);
+        ItemLegislativo item = buscarItemLegislativo(request.getItemLegislativoId());
 
-        return parseRespostaPredicao(resposta, item, perfis);
+        if (!request.isForcarNovaPrevisao()) {
+            Previsao previsaoCache = buscarPrevisaoRecente(item);
+            if (previsaoCache != null) {
+                log.info("Retornando previsão do cache: {}", previsaoCache.getId());
+                return PrevisaoDTO.from(previsaoCache);
+            }
+        }
+
+        try {
+            Previsao previsao = gerarNovaPrevisao(item, request.getTipoPrevisaoOrDefault(), inicioMs);
+            Previsao salva = previsaoRepository.save(previsao);
+
+            log.info("Previsão gerada: {} - Probabilidade: {}%",
+                    salva.getId(),
+                    salva.getProbabilidadeAprovacao() * 100);
+
+            return PrevisaoDTO.from(salva);
+
+        } catch (Exception e) {
+            long duracaoMs = System.currentTimeMillis() - inicioMs;
+            registrarFalha(item, request.getTipoPrevisaoOrDefault(), e, duracaoMs);
+
+            log.error("Erro ao gerar previsão: {}", e.getMessage(), e);
+            throw PrevisaoException.erroCalculo(e.getMessage(), e);
+        }
     }
 
-    public PrevisaoVotoDTO preverVotoParlamentar(String parlamentarId, String tema) {
-        PerfilParlamentar perfil = perfilRepository.findByParlamentarId(parlamentarId)
-                .orElseThrow(() -> new RecursoNaoEncontradoException("Perfil parlamentar não encontrado"));
+    @Transactional
+    public List<PrevisaoDTO> preverLote(PrevisaoLoteDTO request) {
+        log.info("Processando lote de {} previsões", request.getItemLegislativoIds().size());
 
-        String prompt = construirPromptPrevisaoIndividual(perfil, tema);
-        String systemPrompt = """
-                Você é um especialista em análise política e previsão de votações legislativas.
-                Sua tarefa é analisar dados históricos de parlamentares e prever comportamentos de votação.
-                Sempre forneça análises baseadas em dados, com níveis de confiança apropriados.
-                Responda sempre em formato JSON estruturado.
-                """;
+        List<PrevisaoDTO> previsoes = new ArrayList<>();
 
-        String resposta = llama.generate(prompt, systemPrompt);
+        for (String itemId : request.getItemLegislativoIds()) {
+            try {
+                SolicitarPrevisaoDTO solicitacao = SolicitarPrevisaoDTO.builder()
+                        .itemLegislativoId(itemId)
+                        .tipoPrevisao(request.getTipoPrevisaoOrDefault())
+                        .forcarNovaPrevisao(request.isForcarNovaPrevisao())
+                        .build();
 
-        return parseRespostaPrevisaoIndividual(resposta, perfil, tema);
+                PrevisaoDTO previsao = prever(solicitacao);
+                previsoes.add(previsao);
+
+            } catch (Exception e) {
+                log.error("Erro ao prever item {}: {}", itemId, e.getMessage());
+            }
+        }
+
+        log.info("Lote concluído: {} de {} previsões realizadas",
+                previsoes.size(),
+                request.getItemLegislativoIds().size());
+
+        return previsoes;
     }
 
-    private String construirPromptPredicao(ItemLegislativo item, List<PerfilParlamentar> perfis) {
-        StringBuilder prompt = new StringBuilder();
-        prompt.append("Analise a seguinte proposição legislativa e preveja sua aprovação:\n\n");
-        prompt.append("PROPOSIÇÃO:\n");
-        prompt.append("Tipo: ").append(item.getTipo()).append("\n");
-        prompt.append("Número: ").append(item.getIdentificadorCompleto()).append("\n");
-        prompt.append("Ementa: ").append(item.getEmenta()).append("\n");
-        prompt.append("Tema: ").append(item.getTema()).append("\n\n");
+    @Cacheable(value = "previsoes", key = "#itemId")
+    public PrevisaoDTO buscarPrevisaoPorItem(String itemId) {
+        ItemLegislativo item = buscarItemLegislativo(itemId);
 
-        prompt.append("PERFIL DOS PARLAMENTARES:\n");
-        prompt.append("Total de parlamentares analisados: ").append(perfis.size()).append("\n");
+        Previsao previsao = previsaoRepository
+                .findFirstByItemLegislativoOrderByDataPrevisaoDesc(item)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Nenhuma previsão encontrada para o item: " + itemId));
 
-        long favoraveis = perfis.stream()
-                .filter(p -> calcularTendencia(p, item.getTema()) == TendenciaVoto.FAVORAVEL)
+        return PrevisaoDTO.from(previsao);
+    }
+
+    public Page<PrevisaoDTO> buscarPrevisoesRecentes(Pageable pageable) {
+        LocalDateTime limite = LocalDateTime.now().minusDays(30);
+
+        return previsaoRepository.findByDataPrevisaoAfter(limite, pageable)
+                .map(PrevisaoDTO::from);
+    }
+
+    public EstatisticasPrevisaoDTO calcularEstatisticas(int dias) {
+        LocalDateTime inicio = LocalDateTime.now().minusDays(dias);
+        List<Previsao> previsoes = previsaoRepository.findByDataPrevisaoAfter(inicio);
+
+        if (previsoes.isEmpty()) {
+            return estatisticasVazias(inicio, LocalDateTime.now());
+        }
+
+        return calcularEstatisticasDePrevisoes(previsoes, inicio);
+    }
+
+    @Transactional
+    public void limparExpiradas() {
+        LocalDateTime agora = LocalDateTime.now();
+        List<Previsao> expiradas = previsaoRepository.buscarExpiradas(agora);
+
+        if (!expiradas.isEmpty()) {
+            previsaoRepository.deleteAll(expiradas);
+            log.info("Removidas {} previsões expiradas", expiradas.size());
+        }
+    }
+
+    private ItemLegislativo buscarItemLegislativo(String itemId) {
+        return itemLegislativoRepository.findById(itemId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Item legislativo não encontrado: " + itemId));
+    }
+
+    private Previsao buscarPrevisaoRecente(ItemLegislativo item) {
+        LocalDateTime limite = LocalDateTime.now().minusSeconds(cacheTtlSegundos);
+
+        return previsaoRepository
+                .findByItemLegislativo(item).stream()
+                .filter(p -> p.getDataPrevisao().isAfter(limite))
+                .filter(p -> p.getSucesso() != null && p.getSucesso())
+                .findFirst()
+                .orElse(null);
+    }
+
+    private Previsao gerarNovaPrevisao(
+            ItemLegislativo item,
+            String tipoPrevisao,
+            long inicioMs) {
+
+        String prompt = construirPrompt(item, tipoPrevisao);
+        String promptSistema = construirPromptSistema();
+
+        RespostaLlamaDTO resposta = llamaService.enviarRequisicao(
+                prompt,
+                promptSistema,
+                true
+        );
+
+        ResultadoPrevisaoIA resultado = parsearResposta(resposta);
+
+        long duracaoMs = System.currentTimeMillis() - inicioMs;
+
+        return construirPrevisao(item, tipoPrevisao, resultado, resposta, duracaoMs);
+    }
+
+    private String construirPrompt(ItemLegislativo item, String tipoPrevisao) {
+        return String.format("""
+            Analise a seguinte proposição legislativa e preveja a probabilidade de aprovação:
+            
+            TIPO: %s
+            ANO: %d
+            EMENTA: %s
+            TEMA: %s
+            
+            Responda APENAS com um JSON no formato:
+            {
+                "probabilidade": <número entre 0 e 1>,
+                "confianca": <número entre 0 e 1>,
+                "justificativa": "<texto explicativo>",
+                "fatoresPositivos": "<fatores que favorecem aprovação>",
+                "fatoresNegativos": "<fatores que dificultam aprovação>"
+            }
+            """,
+                item.getTipo(),
+                item.getAno(),
+                item.getEmenta(),
+                item.getTema()
+        );
+    }
+
+    private String construirPromptSistema() {
+        return """
+            Você é um especialista em análise legislativa do Congresso Nacional Brasileiro.
+            Sua tarefa é prever a probabilidade de aprovação de proposições com base em:
+            - Tema e conteúdo da proposição
+            - Contexto político atual
+            - Histórico de proposições similares
+            - Complexidade e impacto
+            
+            Seja preciso, objetivo e baseie-se em análise racional.
+            Sempre responda em formato JSON válido.
+            """;
+    }
+
+    private ResultadoPrevisaoIA parsearResposta(RespostaLlamaDTO resposta) {
+        try {
+            return llamaService.extrairJson(resposta, ResultadoPrevisaoIA.class);
+        } catch (Exception e) {
+            log.error("Erro ao parsear resposta do Llama: {}", e.getMessage());
+            throw PrevisaoException.erroCalculo("Resposta em formato inválido", e);
+        }
+    }
+
+    private Previsao construirPrevisao(
+            ItemLegislativo item,
+            String tipoPrevisao,
+            ResultadoPrevisaoIA resultado,
+            RespostaLlamaDTO resposta,
+            long duracaoMs) {
+
+        return Previsao.builder()
+                .itemLegislativo(item)
+                .tipoPrevisao(tipoPrevisao)
+                .probabilidadeAprovacao(resultado.probabilidade())
+                .confianca(resultado.confianca())
+                .justificativa(resultado.justificativa())
+                .fatoresPositivos(resultado.fatoresPositivos())
+                .fatoresNegativos(resultado.fatoresNegativos())
+                .dataPrevisao(LocalDateTime.now())
+                .modeloVersao(modeloVersao)
+                .promptUtilizado(resposta.getMessage().getContent())
+                .respostaCompleta(resposta.getMessage().getContent())
+                .tempoProcessamentoMs(duracaoMs)
+                .sucesso(true)
+                .dataExpiracao(LocalDateTime.now().plusSeconds(cacheTtlSegundos))
+                .build();
+    }
+
+    private void registrarFalha(
+            ItemLegislativo item,
+            String tipoPrevisao,
+            Exception erro,
+            long duracaoMs) {
+
+        Previsao previsaoFalha = Previsao.builder()
+                .itemLegislativo(item)
+                .tipoPrevisao(tipoPrevisao)
+                .dataPrevisao(LocalDateTime.now())
+                .modeloVersao(modeloVersao)
+                .tempoProcessamentoMs(duracaoMs)
+                .sucesso(false)
+                .mensagemErro(erro.getMessage())
+                .dataExpiracao(LocalDateTime.now().plusSeconds(cacheTtlSegundos))
+                .build();
+
+        previsaoRepository.save(previsaoFalha);
+    }
+
+    private EstatisticasPrevisaoDTO estatisticasVazias(LocalDateTime inicio, LocalDateTime fim) {
+        return EstatisticasPrevisaoDTO.builder()
+                .totalPrevisoes(0L)
+                .previsoesComSucesso(0L)
+                .previsoesFalhas(0L)
+                .taxaSucesso(0.0)
+                .periodoInicio(inicio)
+                .periodoFim(fim)
+                .build();
+    }
+
+    private EstatisticasPrevisaoDTO calcularEstatisticasDePrevisoes(
+            List<Previsao> previsoes,
+            LocalDateTime inicio) {
+
+        long total = previsoes.size();
+        long sucesso = previsoes.stream().filter(p -> p.getSucesso() != null && p.getSucesso()).count();
+        long falhas = total - sucesso;
+
+        List<Previsao> sucessos = previsoes.stream()
+                .filter(p -> p.getSucesso() != null && p.getSucesso())
+                .toList();
+
+        return EstatisticasPrevisaoDTO.builder()
+                .totalPrevisoes(total)
+                .previsoesComSucesso(sucesso)
+                .previsoesFalhas(falhas)
+                .taxaSucesso(total > 0 ? (double) sucesso / total : 0.0)
+                .probabilidadeMedia(calcularMedia(sucessos, Previsao::getProbabilidadeAprovacao))
+                .confiancaMedia(calcularMedia(sucessos, Previsao::getConfianca))
+                .tempoMedioMs(calcularMediaLong(previsoes, Previsao::getTempoProcessamentoMs))
+                .tempoMinimoMs(calcularMinimo(previsoes, Previsao::getTempoProcessamentoMs))
+                .tempoMaximoMs(calcularMaximo(previsoes, Previsao::getTempoProcessamentoMs))
+                .periodoInicio(inicio)
+                .periodoFim(LocalDateTime.now())
+                .previsoesMuitoProvaveis(contarPorClassificacao(sucessos, "MUITO_PROVAVEL"))
+                .previsoesProvaveis(contarPorClassificacao(sucessos, "PROVAVEL"))
+                .previsoesImprovaveis(contarPorClassificacao(sucessos, "IMPROVAVEL"))
+                .previsoesMuitoImprovaveis(contarPorClassificacao(sucessos, "MUITO_IMPROVAVEL"))
+                .build();
+    }
+
+    private Double calcularMedia(List<Previsao> previsoes, java.util.function.ToDoubleFunction<Previsao> extractor) {
+        return previsoes.stream()
+                .mapToDouble(extractor)
+                .average()
+                .orElse(0.0);
+    }
+
+    private Long calcularMediaLong(List<Previsao> previsoes, java.util.function.ToLongFunction<Previsao> extractor) {
+        return (long) previsoes.stream()
+                .mapToLong(extractor)
+                .average()
+                .orElse(0.0);
+    }
+
+    private Long calcularMinimo(List<Previsao> previsoes, java.util.function.ToLongFunction<Previsao> extractor) {
+        return previsoes.stream()
+                .mapToLong(extractor)
+                .min()
+                .orElse(0L);
+    }
+
+    private Long calcularMaximo(List<Previsao> previsoes, java.util.function.ToLongFunction<Previsao> extractor) {
+        return previsoes.stream()
+                .mapToLong(extractor)
+                .max()
+                .orElse(0L);
+    }
+
+    private Long contarPorClassificacao(List<Previsao> previsoes, String classificacao) {
+        return previsoes.stream()
+                .filter(p -> classificacao.equals(p.getClassificacao()))
                 .count();
-
-        prompt.append("Parlamentares com histórico favorável ao tema: ").append(favoraveis).append("\n\n");
-
-        prompt.append("Com base nessas informações, forneça:\n");
-        prompt.append("1. Probabilidade de aprovação (0-100%)\n");
-        prompt.append("2. Nível de confiança da predição\n");
-        prompt.append("3. Principais fatores que influenciam\n");
-        prompt.append("4. Recomendação estratégica\n\n");
-        prompt.append("Responda em formato JSON.");
-
-        return prompt.toString();
     }
 
-    private String construirPromptPrevisaoIndividual(PerfilParlamentar perfil, String tema) {
-        StringBuilder prompt = new StringBuilder();
-        prompt.append("Analise o perfil do parlamentar e preveja como votaria:\n\n");
-        prompt.append("PARLAMENTAR:\n");
-        prompt.append("Nome: ").append(perfil.getNomeParlamentar()).append("\n");
-        prompt.append("Partido: ").append(perfil.getPartido()).append("\n");
-        prompt.append("Alinhamento: ").append(perfil.getAlinhamentoGoverno()).append("\n");
-        prompt.append("Alinhamento com governo: ").append(perfil.getPercentualAlinhamentoGoverno()).append("%\n\n");
-
-        prompt.append("TEMA DA VOTAÇÃO: ").append(tema).append("\n\n");
-
-        var posicionamento = perfil.buscarPosicionamentoTema(tema);
-        if (posicionamento != null) {
-            prompt.append("HISTÓRICO NO TEMA:\n");
-            prompt.append("Votações analisadas: ").append(posicionamento.getVotacoesAnalisadas()).append("\n");
-            prompt.append("Favorável: ").append(posicionamento.getPercentualFavoravel()).append("%\n");
-            prompt.append("Contrário: ").append(posicionamento.getPercentualContrario()).append("%\n\n");
-        }
-
-        prompt.append("Preveja:\n");
-        prompt.append("1. Tendência de voto (FAVORAVEL, CONTRARIO, ABSTENCAO, INCERTO)\n");
-        prompt.append("2. Probabilidades para cada opção\n");
-        prompt.append("3. Justificativa\n");
-        prompt.append("4. Fatores que influenciam\n\n");
-        prompt.append("Responda em formato JSON.");
-
-        return prompt.toString();
-    }
-
-    private AnalisePreditivaDTO parseRespostaPredicao(String resposta, ItemLegislativo item, List<PerfilParlamentar> perfis) {
-        try {
-            Map<String, Object> json = objectMapper.readValue(resposta, Map.class);
-
-            double probabilidade = ((Number) json.get("probabilidadeAprovacao")).doubleValue();
-
-            return new AnalisePreditivaDTO(
-                    item.getId(),
-                    item.getEmenta(),
-                    item.getTema(),
-                    probabilidade,
-                    (String) json.get("nivelConfianca"),
-                    new ArrayList<>(),
-                    0, 0, 0,
-                    (List<String>) json.get("fatores"),
-                    (String) json.get("recomendacao"),
-                    (String) json.get("resumo")
-            );
-        } catch (Exception e) {
-            log.error("Erro ao parsear resposta de predição", e);
-            throw new RuntimeException("Erro ao processar resposta LLM", e);
-        }
-    }
-
-    private PrevisaoVotoDTO parseRespostaPrevisaoIndividual(String resposta, PerfilParlamentar perfil, String tema) {
-        try {
-            Map<String, Object> json = objectMapper.readValue(resposta, Map.class);
-
-            TendenciaVoto tendencia = TendenciaVoto.valueOf((String) json.get("tendencia"));
-            double probabilidadeFavoravel = ((Number) json.get("probabilidadeFavoravel")).doubleValue();
-
-            return new PrevisaoVotoDTO(
-                    perfil.getParlamentarId(),
-                    perfil.getNomeParlamentar(),
-                    perfil.getPartido(),
-                    perfil.getUf(),
-                    tema,
-                    tendencia,
-                    NivelConfianca.fromProbabilidade(probabilidadeFavoravel),
-                    probabilidadeFavoravel,
-                    ((Number) json.get("probabilidadeContrario")).doubleValue(),
-                    ((Number) json.get("probabilidadeAbstencao")).doubleValue(),
-                    (String) json.get("justificativa"),
-                    (List<String>) json.get("fatores"),
-                    (Integer) json.get("votacoesSimilares"),
-                    (String) json.get("recomendacao")
-            );
-        } catch (Exception e) {
-            log.error("Erro ao parsear resposta de previsão individual", e);
-            throw new RuntimeException("Erro ao processar resposta LLM", e);
-        }
-    }
-
-    private TendenciaVoto calcularTendencia(PerfilParlamentar perfil, String tema) {
-        var posicionamento = perfil.buscarPosicionamentoTema(tema);
-        if (posicionamento == null) {
-            return TendenciaVoto.INCERTO;
-        }
-        return posicionamento.getTendenciaPredominante();
-    }
+    private record ResultadoPrevisaoIA(
+            double probabilidade,
+            double confianca,
+            String justificativa,
+            String fatoresPositivos,
+            String fatoresNegativos
+    ) {}
 }
