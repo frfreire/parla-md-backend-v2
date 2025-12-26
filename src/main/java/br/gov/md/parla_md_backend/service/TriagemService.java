@@ -34,8 +34,8 @@ public class TriagemService {
         Proposicao proposicao = propositionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Proposição não encontrada"));
 
-        proposicao.setTriagemStatus(novoStatus);
-        proposicao.setObservacaoTriagem(observacao);
+        proposicao.setStatusProposicao(novoStatus.toString());
+        proposicao.setObservacao(observacao);
 
         return propositionRepository.save(proposicao);
     }

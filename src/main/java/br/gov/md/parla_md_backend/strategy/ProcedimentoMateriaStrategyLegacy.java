@@ -16,7 +16,7 @@ public class ProcedimentoMateriaStrategyLegacy implements IProcedimentoStrategy<
 
     @Override
     public void buscarESalvarProcedimentos(Materia materia) {
-        procedimentoMateriaService.fetchAndSaveProcedures(materia);
+        procedimentoMateriaService.fetchAndSaveProcedures(materia.getCodigoMateria());
     }
 
     @Override

@@ -21,7 +21,7 @@ public class ProcedimentoMateriaStrategy implements IProcedimentoStrategy<Materi
     public void buscarESalvarProcedimentos(Materia materia) {
         try {
             logger.debug("Processando procedimentos para matéria ID={}", materia.getId());
-            procedimentoMateriaService.fetchAndSaveProcedures(materia);
+            procedimentoMateriaService.fetchAndSaveProcedures(materia.getCodigoMateria());
             logger.debug("Procedimentos salvos com sucesso para matéria ID={}", materia.getId());
         } catch (Exception e) {
             logger.error("Erro ao processar procedimentos da matéria {}: {}", 

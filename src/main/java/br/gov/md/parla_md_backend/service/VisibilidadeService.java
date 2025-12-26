@@ -1,6 +1,6 @@
 package br.gov.md.parla_md_backend.service;
 
-import br.gov.md.parla_md_backend.Parecer;
+import br.gov.md.parla_md_backend.domain.Parecer;
 import br.gov.md.parla_md_backend.domain.Tramitacao;
 import br.gov.md.parla_md_backend.domain.Usuario;
 import br.gov.md.parla_md_backend.domain.ControleVisibilidade;
@@ -35,7 +35,7 @@ public class VisibilidadeService {
         Parecer parecer = parecerRepository.findById(parecerId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Parecer não encontrado"));
 
-        validarAutoriaOuAdmin(parecer.getAnalista(), usuarioId);
+        validarAutoriaOuAdmin(parecer.getAnalistaResponsavelId(), usuarioId);
 
         Usuario usuario = buscarUsuario(usuarioId);
 
@@ -67,13 +67,13 @@ public class VisibilidadeService {
         Parecer parecer = parecerRepository.findById(parecerId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Parecer não encontrado"));
 
-        validarAutoriaOuAdmin(parecer.getAnalista(), concedenteId);
+        validarAutoriaOuAdmin(parecer.getAnalistaResponsavelId(), concedenteId);
 
         Usuario concedente = buscarUsuario(concedenteId);
 
         ControleVisibilidade controle = parecer.getControleVisibilidade();
         if (controle == null) {
-            controle = criarControleVisibilidadePadrao(parecer.getAnalista());
+            controle = criarControleVisibilidadePadrao(parecer.getAnalistaResponsavelId());
             parecer.setControleVisibilidade(controle);
         }
 
@@ -135,7 +135,7 @@ public class VisibilidadeService {
         Parecer parecer = parecerRepository.findById(parecerId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Parecer não encontrado"));
 
-        validarAutoriaOuAdmin(parecer.getAnalista(), revogadorId);
+        validarAutoriaOuAdmin(parecer.getAnalistaResponsavelId(), revogadorId);
 
         ControleVisibilidade controle = parecer.getControleVisibilidade();
         if (controle != null) {
@@ -168,7 +168,7 @@ public class VisibilidadeService {
         Parecer parecer = parecerRepository.findById(parecerId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Parecer não encontrado"));
 
-        return verificarAcesso(parecer.getControleVisibilidade(), parecer.getAnalista(), usuarioId);
+        return verificarAcesso(parecer.getControleVisibilidade(), parecer.getAnalistaResponsavelId(), usuarioId);
     }
 
     public boolean verificarAcessoTramitacao(String tramitacaoId, String usuarioId) {
@@ -192,7 +192,7 @@ public class VisibilidadeService {
 
     public List<Parecer> filtrarPareceresComAcesso(List<Parecer> pareceres, String usuarioId) {
         return pareceres.stream()
-                .filter(p -> verificarAcesso(p.getControleVisibilidade(), p.getAnalista(), usuarioId))
+                .filter(p -> verificarAcesso(p.getControleVisibilidade(), p.getAnalistaResponsavelId(), usuarioId))
                 .toList();
     }
 

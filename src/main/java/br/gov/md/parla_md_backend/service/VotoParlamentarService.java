@@ -127,7 +127,7 @@ public class VotoParlamentarService {
     private List<Voto> analisarEPublicarVotos(JSONArray votosData, Votacao votacao) {
         List<Voto> votos = new ArrayList<>();
         for (int i = 0; i < votosData.length(); i++) {
-            Voto voto = analisarVoto(votosData.getJSONObject(i), votacao);
+            Voto voto = new Voto();//analisarVoto(votosData.getJSONObject(i), votacao);
             votos.add(voto);
             publicarVoto(voto);
         }
@@ -162,44 +162,42 @@ public class VotoParlamentarService {
             votacao.setVotoData(analisarDateTime(votacaoData.getString("dataHoraVoto")));
         }
 
-        String proposicaoId = votacaoData.optString("uriProposicaoPrincipal", null);
-        if (proposicaoId != null) {
-            Proposicao proposicao = proposicaoService.buscarProposicaoPorId(proposicaoId);
-            votacao.setProposicaoId(proposicao.getId());
-        } else {
-            // If it's not a proposition, it might be a senate matter
-            // You may need to adjust this logic based on how you identify senate matters
-            String matterCode = votacaoData.optString("codigoMateria", null);
-            if (matterCode != null) {
-                Materia materia = senadoService.findMatterById(matterCode);
-                votacao.setMateriaId(materia.getCodigo());
-            }
-        }
+//        String proposicaoId = votacaoData.optString("uriProposicaoPrincipal", null);
+//        if (proposicaoId != null) {
+//            Proposicao proposicao = proposicaoService.buscarProposicaoPorId(proposicaoId);
+//            votacao.setProposicaoId(proposicao.getId());
+//        } else {
+//            String matterCode = votacaoData.optString("codigoMateria", null);
+//            if (matterCode != null) {
+//                Materia materia = senadoService.buscarPorCodigo(Long.parseLong(matterCode));
+//                votacao.setMateriaId(materia.getCodigo());
+//            }
+//        }
 
         return votacao;
     }
 
-    private Voto analisarVoto(JSONObject votoData, Votacao votacao) {
-        JSONObject deputadoData = votoData.getJSONObject("deputado");
-        Parlamentar parlamentar = buscarOuCriarParlamentar(deputadoData);
-        return createVoto(votacao, parlamentar, votoData.getString("voto"));
-    }
+//    private Voto analisarVoto(JSONObject votoData, Votacao votacao) {
+//        JSONObject deputadoData = votoData.getJSONObject("deputado");
+//        Parlamentar parlamentar = buscarOuCriarParlamentar(deputadoData);
+//        return createVoto(votacao, parlamentar, votoData.getString("voto"));
+//    }
 
-    private Parlamentar buscarOuCriarParlamentar(JSONObject deputadoData) {
-        String deputadoId = deputadoData.getString("id");
-        return parlamentarRepository.findById(deputadoId)
-                .orElseGet(() -> criarSalvarParlamentar(deputadoData));
-    }
+//    private Parlamentar buscarOuCriarParlamentar(JSONObject deputadoData) {
+//        String deputadoId = deputadoData.getString("id");
+//        return parlamentarRepository.findById(deputadoId)
+//                .orElseGet(() -> criarSalvarParlamentar(deputadoData));
+//    }
 
-    private Parlamentar criarSalvarParlamentar(JSONObject parlamentarData) {
-        Parlamentar newParlamentar = new Parlamentar(
-                parlamentarData.getString("id"),
-                parlamentarData.getString("nome"),
-                parlamentarData.getString("siglaPartido"),
-                parlamentarData.getString("siglaUf")
-        );
-        return parlamentarRepository.save(newParlamentar);
-    }
+//    private Parlamentar criarSalvarParlamentar(JSONObject parlamentarData) {
+//        Parlamentar newParlamentar = new Parlamentar(
+//                parlamentarData.getString("id"),
+//                parlamentarData.getString("nome"),
+//                parlamentarData.getString("siglaPartido"),
+//                parlamentarData.getString("siglaUf")
+//        );
+//        return parlamentarRepository.save(newParlamentar);
+//    }
 
     private Voto createVoto(Votacao votacao, Parlamentar parlamentar, String votoValor) {
         return new Voto(UUID.randomUUID().toString(), votacao, parlamentar, votoValor);

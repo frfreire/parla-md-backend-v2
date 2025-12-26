@@ -44,6 +44,8 @@ public class Proposicao extends ItemLegislativo {
 
     private String regime;
 
+    private String observacao;
+
     private boolean apreciacao;
 
     private StatusTramitacao statusTramitacao;

@@ -35,7 +35,7 @@ public class AreaImpactoService {
     public Optional<AreaImpacto> updateAreaImpacto(String id, AreaImpacto areaImpactoDetails) {
         return areaImpactoRepository.findById(id)
                 .map(existingArea -> {
-                    existingArea.setName(areaImpactoDetails.getName());
+                    existingArea.setNome(areaImpactoDetails.getNome());
                     existingArea.setKeywords(areaImpactoDetails.getKeywords());
                     return areaImpactoRepository.save(existingArea);
                 });
@@ -56,7 +56,7 @@ public class AreaImpactoService {
 
         for (AreaImpacto area : areaImpactos) {
             double impact = calcularImpacto(text, area.getKeywords());
-            impactos.put(area.getName(), impact);
+            impactos.put(area.getNome(), impact);
         }
 
         return impactos;
