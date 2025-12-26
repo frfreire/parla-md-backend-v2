@@ -1,21 +1,112 @@
 package br.gov.md.parla_md_backend.repository;
 
-import br.gov.md.parla_md_backend.domain.legislativo.Proposicao;
+import br.gov.md.parla_md_backend.domain.Proposicao;
 import br.gov.md.parla_md_backend.domain.enums.StatusTriagem;
+import br.gov.md.parla_md_backend.domain.enums.StatusTramitacao;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface IProposicaoRepository extends MongoRepository<Proposicao, String> {
-    List<Proposicao> findByAutorId(String autorId);
-    Page<Proposicao> findByTriagemStatus(StatusTriagem status, Pageable pageable);
-    List<Proposicao> findByTema(String tema);
-    List<Proposicao> findByDataApresentacaoAfter(LocalDateTime date);
 
-    List<Proposicao> findByDataApresentacaoBetween(LocalDateTime dataApresentacaoAfter, LocalDateTime dataApresentacaoBefore);
+    Optional<Proposicao> findByIdCamara(Long idCamara);
+
+    List<Proposicao> findByAno(Integer ano);
+    List<Proposicao> findBySiglaTipo(String siglaTipo);
+    List<Proposicao> findByTema(String tema);
+    List<Proposicao> findByPartidoAutor(String partidoAutor);
+    List<Proposicao> findByEstadoAutor(String estadoAutor);
+    List<Proposicao> findBySiglaOrgao(String siglaOrgao);
+    List<Proposicao> findByRegime(String regime);
+    List<Proposicao> findByStatusProposicao(String statusProposicao);
+    List<Proposicao> findBySituacaoAtual(String situacaoAtual);
+
+    List<Proposicao> findByIdDeputadoAutor(Long idDeputadoAutor);
+    List<Proposicao> findByNomeDeputadoAutor(String nomeDeputadoAutor);
+    List<Proposicao> findByAutorId(String autorId);  // Mantido para compatibilidade
+
+    List<Proposicao> findByTriagemStatus(StatusTriagem status);
+    Page<Proposicao> findByTriagemStatus(StatusTriagem status, Pageable pageable);
+    List<Proposicao> findByStatusTramitacao(StatusTramitacao status);
+    List<Proposicao> findByAprovada(boolean aprovada);
+
+    List<Proposicao> findByDataApresentacaoAfter(LocalDateTime data);
+    List<Proposicao> findByDataApresentacaoBefore(LocalDateTime data);
+    List<Proposicao> findByDataApresentacaoBetween(
+            LocalDateTime dataInicio,
+            LocalDateTime dataFim
+    );
+    List<Proposicao> findByAnoOrderByDataApresentacaoDesc(Integer ano);
+
+    List<Proposicao> findByAnoAndSiglaTipo(Integer ano, String siglaTipo);
+    List<Proposicao> findBySiglaTipoAndAno(String siglaTipo, Integer ano);
+    List<Proposicao> findByAnoAndTema(Integer ano, String tema);
+    List<Proposicao> findByTemaAndAno(String tema, Integer ano);
+    List<Proposicao> findByPartidoAutorAndAno(String partidoAutor, Integer ano);
+    List<Proposicao> findBySiglaOrgaoAndAno(String siglaOrgao, Integer ano);
+
+    long countByAno(Integer ano);
+    long countBySiglaTipo(String siglaTipo);
+    long countByTema(String tema);
+    long countByTriagemStatus(StatusTriagem status);
+    long countByStatusTramitacao(StatusTramitacao status);
+    long countByAnoAndSiglaTipo(Integer ano, String siglaTipo);
+    long countByAprovada(boolean aprovada);
+
+    Page<Proposicao> findByAno(Integer ano, Pageable pageable);
+    Page<Proposicao> findBySiglaTipo(String siglaTipo, Pageable pageable);
+    Page<Proposicao> findByTema(String tema, Pageable pageable);
+    Page<Proposicao> findByPartidoAutor(String partidoAutor, Pageable pageable);
+    Page<Proposicao> findByEstadoAutor(String estadoAutor, Pageable pageable);
+    Page<Proposicao> findBySiglaOrgao(String siglaOrgao, Pageable pageable);
+
+    @Query("{ 'ementa': { $regex: ?0, $options: 'i' } }")
+    List<Proposicao> buscarPorEmentaContendo(String texto);
+
+    @Query("{ 'keywords': { $regex: ?0, $options: 'i' } }")
+    List<Proposicao> buscarPorPalavraChave(String keyword);
+
+    @Query("{ $or: [ "
+            + "{ 'ementa': { $regex: ?0, $options: 'i' } }, "
+            + "{ 'ementaDetalhada': { $regex: ?0, $options: 'i' } }, "
+            + "{ 'keywords': { $regex: ?0, $options: 'i' } } "
+            + "] }")
+    List<Proposicao> buscarTextoCompleto(String texto);
+
+    @Query("{ 'dataApresentacao': { $gte: ?0, $lte: ?1 }, 'tema': ?2 }")
+    List<Proposicao> buscarPorPeriodoETema(
+            LocalDateTime dataInicio,
+            LocalDateTime dataFim,
+            String tema
+    );
+
+    @Query("{ 'probabilidadeAprovacao': { $gte: ?0 } }")
+    List<Proposicao> buscarPorProbabilidadeAprovacaoMinima(Double probabilidadeMinima);
+
+    @Query("{ 'probabilidadeAprovacao': { $lte: ?0 } }")
+    List<Proposicao> buscarPorProbabilidadeAprovacaoMaxima(Double probabilidadeMaxima);
+
+    @Query("{ 'probabilidadeAprovacao': { $gte: ?0, $lte: ?1 } }")
+    List<Proposicao> buscarPorFaixaProbabilidadeAprovacao(
+            Double probabilidadeMinima,
+            Double probabilidadeMaxima
+    );
+
+    @Query("{ 'ano': ?0, 'statusTriagem': ?1, 'tema': ?2 }")
+    Page<Proposicao> buscarPorAnoStatusETema(
+            Integer ano,
+            StatusTriagem status,
+            String tema,
+            Pageable pageable
+    );
+
+    boolean existsByIdCamara(Long idCamara);
+    boolean existsByAnoAndNumero(Integer ano, Integer numero);
 }

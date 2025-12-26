@@ -1,131 +1,65 @@
 package br.gov.md.parla_md_backend.domain;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
 
-@Document(collection = "parladb.votacao")
+@Document(collection = "votacoes")
+@CompoundIndexes({
+        @CompoundIndex(name = "idx_parlamentar_data", def = "{'parlamentarId': 1, 'dataHoraInicio': -1}"),
+        @CompoundIndex(name = "idx_proposicao_data", def = "{'proposicaoId': 1, 'dataHoraInicio': -1}")
+})
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Votacao {
 
     @Id
     private String id;
+
+    @Indexed
     private LocalDateTime dataHoraInicio;
+
     private LocalDateTime dataHoraFim;
+
     private String siglaOrgao;
+
     private String uriProposicaoPrincipal;
+
     private String descricao;
+
+    @Indexed
     private String parlamentarId;
+
+    @Indexed
     private String proposicaoId;
+
+    @Indexed
     private String materiaId;
+
     private String voto;
+
     private LocalDateTime votoData;
 
-    public Votacao() {
+    public boolean isVotoFavoravel() {
+        return "Sim".equalsIgnoreCase(voto) || "SIM".equalsIgnoreCase(voto);
     }
 
-    public Votacao(String id, LocalDateTime dataHoraInicio, LocalDateTime dataHoraFim, String siglaOrgao, String uriProposicaoPrincipal, String descricao, String parlamentarId, String proposicaoId, String materiaId, String voto, LocalDateTime votoData) {
-        this.id = id;
-        this.dataHoraInicio = dataHoraInicio;
-        this.dataHoraFim = dataHoraFim;
-        this.siglaOrgao = siglaOrgao;
-        this.uriProposicaoPrincipal = uriProposicaoPrincipal;
-        this.descricao = descricao;
-        this.parlamentarId = parlamentarId;
-        this.proposicaoId = proposicaoId;
-        this.materiaId = materiaId;
-        this.voto = voto;
-        this.votoData = votoData;
+    public boolean isVotoContrario() {
+        return "Não".equalsIgnoreCase(voto) || "NAO".equalsIgnoreCase(voto) ||
+                "NÃO".equalsIgnoreCase(voto);
     }
 
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public LocalDateTime getDataHoraInicio() {
-        return dataHoraInicio;
-    }
-
-    public void setDataHoraInicio(LocalDateTime dataHoraInicio) {
-        this.dataHoraInicio = dataHoraInicio;
-    }
-
-    public LocalDateTime getDataHoraFim() {
-        return dataHoraFim;
-    }
-
-    public void setDataHoraFim(LocalDateTime dataHoraFim) {
-        this.dataHoraFim = dataHoraFim;
-    }
-
-    public String getSiglaOrgao() {
-        return siglaOrgao;
-    }
-
-    public void setSiglaOrgao(String siglaOrgao) {
-        this.siglaOrgao = siglaOrgao;
-    }
-
-    public String getUriProposicaoPrincipal() {
-        return uriProposicaoPrincipal;
-    }
-
-    public void setUriProposicaoPrincipal(String uriProposicaoPrincipal) {
-        this.uriProposicaoPrincipal = uriProposicaoPrincipal;
-    }
-
-    public String getDescricao() {
-        return descricao;
-    }
-
-    public void setDescricao(String descricao) {
-        this.descricao = descricao;
-    }
-
-    public String getParlamentarId() {
-        return parlamentarId;
-    }
-
-    public void setParlamentarId(String parlamentarId) {
-        this.parlamentarId = parlamentarId;
-    }
-
-    public String getProposicaoId() {
-        return proposicaoId;
-    }
-
-    public void setProposicaoId(String proposicaoId) {
-        this.proposicaoId = proposicaoId;
-    }
-
-    public String getMateriaId() {
-        return materiaId;
-    }
-
-    public void setMateriaId(String materiaId) {
-        this.materiaId = materiaId;
-    }
-
-    public String getVoto() {
-        return voto;
-    }
-
-    public void setVoto(String voto) {
-        this.voto = voto;
-    }
-
-    public LocalDateTime getVotoData() {
-        return votoData;
-    }
-
-    public void setVotoData(LocalDateTime votoData) {
-        this.votoData = votoData;
+    public boolean isAbstencao() {
+        return "Abstenção".equalsIgnoreCase(voto) || "ABSTENCAO".equalsIgnoreCase(voto);
     }
 }

@@ -1,6 +1,6 @@
 package br.gov.md.parla_md_backend.domain.dto;
 
-import br.gov.md.parla_md_backend.domain.TipoTramitacao;
+import br.gov.md.parla_md_backend.domain.enums.TipoTramitacao;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -52,4 +52,5 @@ public class EncaminhamentoDTO {
     private String motivoTramitacao;
 
     private String observacoes;
+
 }

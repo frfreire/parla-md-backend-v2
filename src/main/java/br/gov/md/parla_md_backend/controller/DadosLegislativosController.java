@@ -1,8 +1,7 @@
 package br.gov.md.parla_md_backend.controller;
 
-import br.gov.md.parla_md_backend.domain.legislativo.Materia;
-import br.gov.md.parla_md_backend.domain.ProcedimentoProposicao;
-import br.gov.md.parla_md_backend.domain.legislativo.Proposicao;
+import br.gov.md.parla_md_backend.domain.Materia;
+import br.gov.md.parla_md_backend.domain.Proposicao;
 import br.gov.md.parla_md_backend.service.*;
 import br.gov.md.parla_md_backend.service.ai.PredictionService;
 import org.springframework.http.HttpStatus;

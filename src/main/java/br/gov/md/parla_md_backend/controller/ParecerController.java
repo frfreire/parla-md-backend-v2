@@ -1,12 +1,13 @@
 package br.gov.md.parla_md_backend.controller;
 
-import br.gov.md.parla_md_backend.domain.parecer.Recomendacao;
+import br.gov.md.parla_md_backend.domain.Usuario;
+import br.gov.md.parla_md_backend.domain.dto.AprovarParecerDTO;
+import br.gov.md.parla_md_backend.domain.dto.EmitirParecerDTO;
 import br.gov.md.parla_md_backend.domain.dto.ParecerDTO;
 import br.gov.md.parla_md_backend.domain.dto.SolicitarParecerDTO;
-import br.gov.md.parla_md_backend.service.parecer.ParecerService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import br.gov.md.parla_md_backend.exception.RecursoNaoEncontradoException;
+import br.gov.md.parla_md_backend.repository.IUsuarioRepository;
+import br.gov.md.parla_md_backend.service.ParecerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,123 +18,122 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * Controller para gerenciamento de pareceres técnicos
- */
 @Slf4j
 @RestController
 @RequestMapping("/api/pareceres")
 @RequiredArgsConstructor
-@Tag(name = "Pareceres", description = "Endpoints para gerenciamento de pareceres técnicos internos")
-@SecurityRequirement(name = "bearer-jwt")
 public class ParecerController {
 
     private final ParecerService parecerService;
+    private final IUsuarioRepository usuarioRepository;
 
-    @PostMapping
+    /**
+     * Solicita parecer de um setor
+     */
+    @PostMapping("/solicitar")
     @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR')")
-    @Operation(summary = "Solicitar parecer a um setor",
-            description = "Solicita parecer técnico a setor interno do MD")
     public ResponseEntity<ParecerDTO> solicitarParecer(
             @Valid @RequestBody SolicitarParecerDTO dto,
-            Authentication authentication) {
+            @AuthenticationPrincipal UserDetails userDetails) {
 
-        log.info("Solicitando parecer para processo {} ao setor {}",
-                dto.getProcessoId(), dto.getSetorEmissorId());
+        log.info("Solicitação de parecer recebida do usuário: {}", userDetails.getUsername());
 
-        String solicitanteId = authentication.getName();
+        String solicitanteId = extrairUsuarioId(userDetails);
         ParecerDTO parecer = parecerService.solicitarParecer(dto, solicitanteId);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(parecer);
     }
 
-    @PutMapping("/{parecerId}/emitir")
+    /**
+     * Emite parecer (analista)
+     */
+    @PutMapping("/emitir")
     @PreAuthorize("hasAnyRole('ADMIN', 'ANALISTA')")
-    @Operation(summary = "Emitir parecer",
-            description = "Emite parecer técnico sobre processo")
     public ResponseEntity<ParecerDTO> emitirParecer(
-            @PathVariable String parecerId,
-            @RequestParam String contexto,
-            @RequestParam String analise,
-            @RequestParam Recomendacao recomendacao,
-            @RequestParam String justificativa,
-            @RequestParam(required = false) List<String> fundamentacaoLegal,
-            @RequestParam(required = false) List<String> impactosIdentificados,
-            @RequestParam String conclusao,
-            Authentication authentication) {
+            @Valid @RequestBody EmitirParecerDTO dto,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
-        log.info("Emitindo parecer {} por usuário: {}",
-                parecerId, authentication.getName());
+        log.info("Emissão de parecer {} pelo usuário: {}", dto.parecerId(), userDetails.getUsername());
 
-        String analistaId = authentication.getName();
-        String analistaNome = authentication.getName();
+        String analistaId = extrairUsuarioId(userDetails);
+        String analistaNome = buscarNomeUsuario(analistaId);
 
-        ParecerDTO parecer = parecerService.emitirParecer(
-                parecerId, analistaId, analistaNome, contexto, analise,
-                recomendacao, justificativa, fundamentacaoLegal,
-                impactosIdentificados, conclusao);
+        ParecerDTO parecer = parecerService.emitirParecer(dto, analistaId, analistaNome);
 
         return ResponseEntity.ok(parecer);
     }
 
-    @PutMapping("/{parecerId}/aprovar")
+    /**
+     * Aprova ou rejeita parecer (superior hierárquico)
+     */
+    @PutMapping("/aprovar")
     @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR')")
-    @Operation(summary = "Aprovar parecer",
-            description = "Aprova parecer emitido (superior hierárquico)")
     public ResponseEntity<ParecerDTO> aprovarParecer(
-            @PathVariable String parecerId,
-            Authentication authentication) {
+            @Valid @RequestBody AprovarParecerDTO dto,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
-        log.info("Aprovando parecer {} por usuário: {}",
-                parecerId, authentication.getName());
+        log.info("Aprovação de parecer {} pelo usuário: {}", dto.parecerId(), userDetails.getUsername());
 
-        String aprovadorId = authentication.getName();
-        String aprovadorNome = authentication.getName();
+        String aprovadorId = extrairUsuarioId(userDetails);
+        String aprovadorNome = buscarNomeUsuario(aprovadorId);
 
-        ParecerDTO parecer = parecerService.aprovarParecer(
-                parecerId, aprovadorId, aprovadorNome);
+        ParecerDTO parecer = parecerService.aprovarParecer(dto, aprovadorId, aprovadorNome);
 
         return ResponseEntity.ok(parecer);
     }
 
-    @GetMapping("/processo/{processoId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'ANALISTA', 'GESTOR', 'EXTERNO')")
-    @Operation(summary = "Buscar pareceres de um processo")
-    public ResponseEntity<List<ParecerDTO>> buscarPorProcesso(
-            @PathVariable String processoId) {
+    /**
+     * Busca parecer por ID
+     */
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR', 'ANALISTA')")
+    public ResponseEntity<ParecerDTO> buscarPorId(@PathVariable String id) {
+        log.debug("Buscando parecer: {}", id);
 
+        ParecerDTO parecer = parecerService.buscarPorId(id);
+        return ResponseEntity.ok(parecer);
+    }
+
+    /**
+     * Busca pareceres de um processo
+     */
+    @GetMapping("/processo/{processoId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR', 'ANALISTA')")
+    public ResponseEntity<List<ParecerDTO>> buscarPorProcesso(@PathVariable String processoId) {
         log.debug("Buscando pareceres do processo: {}", processoId);
 
         List<ParecerDTO> pareceres = parecerService.buscarPorProcesso(processoId);
         return ResponseEntity.ok(pareceres);
     }
 
-    @GetMapping("/setor/{setorId}/pendentes")
-    @PreAuthorize("hasAnyRole('ADMIN', 'ANALISTA', 'GESTOR')")
-    @Operation(summary = "Buscar pareceres pendentes de um setor")
+    /**
+     * Busca pareceres pendentes de emissão de um setor
+     */
+    @GetMapping("/pendentes/setor/{setorId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR', 'ANALISTA')")
     public ResponseEntity<Page<ParecerDTO>> buscarPendentesPorSetor(
             @PathVariable String setorId,
-            @PageableDefault(size = 20, sort = "dataSolicitacao", direction = Sort.Direction.DESC)
-            Pageable pageable) {
+            @PageableDefault(size = 20, sort = "dataSolicitacao", direction = Sort.Direction.DESC) Pageable pageable) {
 
         log.debug("Buscando pareceres pendentes do setor: {}", setorId);
 
-        Page<ParecerDTO> pareceres = parecerService.buscarPendentesPorSetor(
-                setorId, pageable);
+        Page<ParecerDTO> pareceres = parecerService.buscarPendentesPorSetor(setorId, pageable);
         return ResponseEntity.ok(pareceres);
     }
 
-    @GetMapping("/pendentes-aprovacao")
+    /**
+     * Busca pareceres emitidos pendentes de aprovação
+     */
+    @GetMapping("/pendentes/aprovacao")
     @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR')")
-    @Operation(summary = "Buscar pareceres pendentes de aprovação")
     public ResponseEntity<Page<ParecerDTO>> buscarPendentesAprovacao(
-            @PageableDefault(size = 20, sort = "dataEmissao", direction = Sort.Direction.DESC)
-            Pageable pageable) {
+            @PageableDefault(size = 20, sort = "dataEmissao", direction = Sort.Direction.DESC) Pageable pageable) {
 
         log.debug("Buscando pareceres pendentes de aprovação");
 
@@ -141,13 +141,161 @@ public class ParecerController {
         return ResponseEntity.ok(pareceres);
     }
 
+    /**
+     * Busca pareceres com prazo vencido
+     */
     @GetMapping("/prazo-vencido")
     @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR')")
-    @Operation(summary = "Buscar pareceres com prazo vencido")
     public ResponseEntity<List<ParecerDTO>> buscarComPrazoVencido() {
         log.debug("Buscando pareceres com prazo vencido");
 
         List<ParecerDTO> pareceres = parecerService.buscarComPrazoVencido();
         return ResponseEntity.ok(pareceres);
     }
+
+    /**
+     * Busca pareceres pendentes do usuário logado
+     */
+    @GetMapping("/meus-pendentes")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ANALISTA')")
+    public ResponseEntity<Page<ParecerDTO>> buscarMeusPendentes(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PageableDefault(size = 20, sort = "dataSolicitacao", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        log.debug("Buscando pareceres pendentes do usuário: {}", userDetails.getUsername());
+
+        String usuarioId = extrairUsuarioId(userDetails);
+        Usuario usuario = buscarUsuario(usuarioId);
+
+        Page<ParecerDTO> pareceres = parecerService.buscarPendentesPorSetor(usuario.getSetorId(), pageable);
+        return ResponseEntity.ok(pareceres);
+    }
+
+    /**
+     * Busca estatísticas de pareceres por processo
+     */
+    @GetMapping("/estatisticas/processo/{processoId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR')")
+    public ResponseEntity<EstatisticasParecerDTO> buscarEstatisticasPorProcesso(
+            @PathVariable String processoId) {
+
+        log.debug("Buscando estatísticas de pareceres do processo: {}", processoId);
+
+        List<ParecerDTO> pareceres = parecerService.buscarPorProcesso(processoId);
+
+        long total = pareceres.size();
+        long pendentes = pareceres.stream()
+                .filter(p -> p.dataEmissao() == null)
+                .count();
+        long emitidos = pareceres.stream()
+                .filter(p -> p.dataEmissao() != null && p.dataAprovacao() == null)
+                .count();
+        long aprovados = pareceres.stream()
+                .filter(p -> p.dataAprovacao() != null)
+                .count();
+        long prazoVencido = pareceres.stream()
+                .filter(p -> p.prazo() != null && p.dataEmissao() == null)
+                .filter(p -> java.time.LocalDateTime.now().isAfter(p.prazo()))
+                .count();
+        long atendidoPrazo = pareceres.stream()
+                .filter(p -> p.dataEmissao() != null)
+                .filter(ParecerDTO::atendidoPrazo)
+                .count();
+
+        EstatisticasParecerDTO estatisticas = new EstatisticasParecerDTO(
+                total,
+                pendentes,
+                emitidos,
+                aprovados,
+                prazoVencido,
+                atendidoPrazo
+        );
+
+        return ResponseEntity.ok(estatisticas);
+    }
+
+    /**
+     * Busca estatísticas gerais de pareceres do setor
+     */
+    @GetMapping("/estatisticas/setor/{setorId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR')")
+    public ResponseEntity<EstatisticasSetorDTO> buscarEstatisticasPorSetor(
+            @PathVariable String setorId) {
+
+        log.debug("Buscando estatísticas do setor: {}", setorId);
+
+        // Buscar todos os pareceres do setor (sem paginação para estatísticas)
+        Page<ParecerDTO> page = parecerService.buscarPendentesPorSetor(
+                setorId,
+                Pageable.unpaged()
+        );
+
+        List<ParecerDTO> pareceres = page.getContent();
+
+        long totalPendentes = pareceres.size();
+        long prazoVencido = pareceres.stream()
+                .filter(p -> p.prazo() != null)
+                .filter(p -> java.time.LocalDateTime.now().isAfter(p.prazo()))
+                .count();
+        long urgentes = pareceres.stream()
+                .filter(p -> p.prazo() != null)
+                .filter(p -> {
+                    java.time.LocalDateTime agora = java.time.LocalDateTime.now();
+                    java.time.LocalDateTime limite = agora.plusDays(3);
+                    return p.prazo().isAfter(agora) && p.prazo().isBefore(limite);
+                })
+                .count();
+
+        EstatisticasSetorDTO estatisticas = new EstatisticasSetorDTO(
+                totalPendentes,
+                prazoVencido,
+                urgentes
+        );
+
+        return ResponseEntity.ok(estatisticas);
+    }
+
+    /**
+     * Extrai o ID do usuário do UserDetails
+     */
+    private String extrairUsuarioId(UserDetails userDetails) {
+        return userDetails.getUsername();
+    }
+
+    /**
+     * Busca o nome do usuário pelo ID
+     */
+    private String buscarNomeUsuario(String usuarioId) {
+        Usuario usuario = buscarUsuario(usuarioId);
+        return usuario.getNome();
+    }
+
+    /**
+     * Busca usuário completo
+     */
+    private Usuario buscarUsuario(String usuarioId) {
+        return usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado"));
+    }
+
+    /**
+     * DTO para estatísticas de pareceres de um processo
+     */
+    public record EstatisticasParecerDTO(
+            long total,
+            long pendentes,
+            long emitidos,
+            long aprovados,
+            long prazoVencido,
+            long atendidoPrazo
+    ) {}
+
+    /**
+     * DTO para estatísticas de pareceres de um setor
+     */
+    public record EstatisticasSetorDTO(
+            long totalPendentes,
+            long prazoVencido,
+            long urgentes
+    ) {}
 }

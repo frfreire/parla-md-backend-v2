@@ -1,6 +1,7 @@
 package br.gov.md.parla_md_backend.domain.enums;
 
 public enum TipoMateria {
+
     PLS("Projeto de Lei do Senado"),
     PLC("Projeto de Lei da Câmara"),
     PEC("Proposta de Emenda à Constituição"),

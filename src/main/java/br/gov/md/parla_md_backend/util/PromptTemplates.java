@@ -1,6 +1,6 @@
 package br.gov.md.parla_md_backend.util;
 
-import br.gov.md.parla_md_backend.domain.legislativo.Proposicao;
+import br.gov.md.parla_md_backend.domain.Proposicao;
 
 public class PromptTemplates {
 

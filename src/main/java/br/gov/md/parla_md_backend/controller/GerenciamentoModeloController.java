@@ -91,7 +91,7 @@ public class GerenciamentoModeloController {
     @PostMapping("/predict")
     public ResponseEntity<?> predictApproval(@RequestBody ProposicaoDTO proposicaoDTO) {
         try {
-            double probability = predictionService.predictApprovalProbability(proposicaoDTO.toProposition());
+            double probability = predictionService.predictApprovalProbability(proposicaoDTO.paraProposicao());
             return ResponseEntity.ok("Probabilidade de aprovação: " + probability);
         } catch (IllegalStateException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)

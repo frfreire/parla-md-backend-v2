@@ -1,6 +1,7 @@
 package br.gov.md.parla_md_backend.domain.dto;
 
-import br.gov.md.parla_md_backend.domain.processo.PrioridadeProcesso;
+import br.gov.md.parla_md_backend.domain.AreaImpacto;
+import br.gov.md.parla_md_backend.domain.enums.PrioridadeProcesso;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -22,6 +23,9 @@ public class CriarProcessoDTO {
     @NotBlank(message = "Título é obrigatório")
     private String titulo;
 
+    @NotBlank(message = "Número do processo é obrigatório")
+    private String numeroProcesso;
+
     @NotBlank(message = "Descrição é obrigatória")
     private String descricao;
 
@@ -31,15 +35,16 @@ public class CriarProcessoDTO {
     @NotNull(message = "Prioridade é obrigatória")
     private PrioridadeProcesso prioridade;
 
-    @NotEmpty(message = "Processo deve ter pelo menos uma proposição")
     private List<String> proposicaoIds = new ArrayList<>();
+
+    private List<String> materiaIds = new ArrayList<>();
 
     @NotBlank(message = "Setor responsável é obrigatório")
     private String setorResponsavel;
 
     private LocalDateTime prazoFinal;
 
-    private List<String> areasImpacto = new ArrayList<>();
+    private List<AreaImpacto> areasImpacto = new ArrayList<>();
 
     private boolean requerAnaliseJuridica;
 
@@ -48,4 +53,5 @@ public class CriarProcessoDTO {
     private boolean requerConsultaExterna;
 
     private String observacoes;
+
 }

@@ -1,52 +1,63 @@
 package br.gov.md.parla_md_backend.domain;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
-@Document(collection = "parladb.area_impacto")
+@Document(collection = "areas_impacto")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class AreaImpacto {
 
     @Id
     private String id;
-    private String name;
+
+    @Indexed(unique = true)
+    private String nome;
+
+    private String descricao;
+
     private List<String> keywords;
 
-    public AreaImpacto() {
+    private List<String> gruposAfetados;
 
+    private String categoria;
+
+    private Boolean ativa;
+
+    private Integer ordem;
+
+    private LocalDateTime dataCriacao;
+
+    private LocalDateTime dataUltimaAtualizacao;
+
+    public boolean contemKeyword(String texto) {
+        if (keywords == null || keywords.isEmpty()) {
+            return false;
+        }
+
+        String textoLower = texto.toLowerCase();
+        return keywords.stream()
+                .anyMatch(keyword -> textoLower.contains(keyword.toLowerCase()));
     }
 
-    public AreaImpacto(String id, String name, List<String> keywords) {
-        this.id = id;
-        this.name = name;
-        this.keywords = keywords;
-    }
+    public long contarKeywords(String texto) {
+        if (keywords == null || keywords.isEmpty()) {
+            return 0;
+        }
 
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public List<String> getKeywords() {
-        return keywords;
-    }
-
-    public void setKeywords(List<String> keywords) {
-        this.keywords = keywords;
+        String textoLower = texto.toLowerCase();
+        return keywords.stream()
+                .filter(keyword -> textoLower.contains(keyword.toLowerCase()))
+                .count();
     }
 }

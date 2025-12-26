@@ -1,11 +1,5 @@
 package br.gov.md.parla_md_backend.exception;
 
-/**
- * Exceção para tokens JWT inválidos ou expirados.
- *
- * @author fabricio.freire
- * @since 1.0
- */
 public class TokenInvalidoException extends AutenticacaoException {
 
     public TokenInvalidoException(String mensagem) {

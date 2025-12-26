@@ -1,8 +1,8 @@
 package br.gov.md.parla_md_backend.service;
 
-import br.gov.md.parla_md_backend.domain.Despacho;
-import br.gov.md.parla_md_backend.domain.Opiniao;
-import br.gov.md.parla_md_backend.domain.legislativo.Proposicao;
+import br.gov.md.parla_md_backend.domain.old.Despacho;
+import br.gov.md.parla_md_backend.domain.old.Opiniao;
+import br.gov.md.parla_md_backend.domain.Proposicao;
 import br.gov.md.parla_md_backend.domain.enums.StatusTramitacao;
 import br.gov.md.parla_md_backend.repository.IDespachoRepository;
 import br.gov.md.parla_md_backend.repository.IOpiniaoRepository;
