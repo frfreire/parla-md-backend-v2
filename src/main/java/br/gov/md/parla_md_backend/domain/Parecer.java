@@ -1,6 +1,7 @@
 package br.gov.md.parla_md_backend.domain;
 
 import br.gov.md.parla_md_backend.domain.enums.RecomendacaoParecer;
+import br.gov.md.parla_md_backend.domain.enums.StatusParecer;
 import br.gov.md.parla_md_backend.domain.enums.TipoParecer;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -44,6 +45,8 @@ public class Parecer {
     private String analise;
     private RecomendacaoParecer recomendacao;
     private String justificativaRecomendacao;
+
+    private StatusParecer statusParecer;
 
     @Builder.Default
     private List<String> fundamentacaoLegal = new ArrayList<>();

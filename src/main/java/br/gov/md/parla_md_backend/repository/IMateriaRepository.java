@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -113,4 +114,6 @@ public interface IMateriaRepository extends MongoRepository<Materia, String> {
     Page<Materia> findMateriasPrioritarias(Pageable pageable);
 
     Page<Materia> findByTipoMateriaIn(List<TipoMateria> tipos, Pageable pageable);
+
+    Collection<Object> findByDataApresentacaoBetween(LocalDateTime inicio, LocalDateTime fim);
 }
