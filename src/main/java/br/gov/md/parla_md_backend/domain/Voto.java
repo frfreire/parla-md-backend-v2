@@ -1,6 +1,5 @@
-package br.gov.md.parla_md_backend.domain.old;
+package br.gov.md.parla_md_backend.domain;
 
-import br.gov.md.parla_md_backend.domain.Parlamentar;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

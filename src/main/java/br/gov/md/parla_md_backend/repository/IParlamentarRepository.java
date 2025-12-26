@@ -1,4 +1,4 @@
-package br.gov.md.parla_md_backend.repository.old;
+package br.gov.md.parla_md_backend.repository;
 
 import br.gov.md.parla_md_backend.domain.Parlamentar;
 import org.springframework.data.mongodb.repository.MongoRepository;
