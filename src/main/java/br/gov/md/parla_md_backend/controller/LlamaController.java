@@ -1,8 +1,9 @@
 package br.gov.md.parla_md_backend.controller;
 
-import br.gov.md.parla_md_backend.domain.dto.RespostaLlamaDTO;
 import br.gov.md.parla_md_backend.domain.InteracaoLlama;
+import br.gov.md.parla_md_backend.domain.dto.RespostaLlamaDTO;
 import br.gov.md.parla_md_backend.service.LlamaService;
+import com.fasterxml.jackson.core.type.TypeReference;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -96,7 +97,11 @@ public class LlamaController {
         log.info("Extraindo JSON de resposta Llama");
 
         RespostaLlamaDTO resposta = RespostaLlamaDTO.class.cast(request.getResposta());
-        Map<String, Object> json = llamaService.extrairJson(resposta, Map.class);
+
+        Map<String, Object> json = llamaService.extrairJson(
+                resposta,
+                new TypeReference<Map<String, Object>>() {}
+        );
 
         return ResponseEntity.ok(json);
     }

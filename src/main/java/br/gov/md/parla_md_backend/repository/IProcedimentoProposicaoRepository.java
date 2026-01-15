@@ -14,7 +14,7 @@ import java.util.Optional;
 @Repository
 public interface IProcedimentoProposicaoRepository extends MongoRepository<ProcedimentoProposicao, String> {
 
-    List<ProcedimentoProposicao> findByPropositionId(String propositionId);
+//    List<ProcedimentoProposicao> findByPropositionId(String propositionId);
 
     List<ProcedimentoProposicao> findByProposicao(Proposicao proposicao);
     List<ProcedimentoProposicao> findByProposicaoOrderBySequenciaAsc(Proposicao proposicao);

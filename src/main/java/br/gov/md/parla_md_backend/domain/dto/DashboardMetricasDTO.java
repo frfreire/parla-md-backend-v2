@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -17,7 +18,7 @@ public class DashboardMetricasDTO {
 
     private String id;
 
-    private LocalDateTime dataCalculo;
+    private LocalDate dataCalculo;
 
     private String periodo;
 
@@ -59,7 +60,7 @@ public class DashboardMetricasDTO {
 
     private TendenciasDTO tendencias;
 
-    private LocalDateTime proximaAtualizacao;
+    private LocalDate proximaAtualizacao;
 
     public static DashboardMetricasDTO from(MetricaDashboard metrica) {
         return DashboardMetricasDTO.builder()

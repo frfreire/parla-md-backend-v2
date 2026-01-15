@@ -1,6 +1,8 @@
 package br.gov.md.parla_md_backend.repository;
 
 import br.gov.md.parla_md_backend.domain.Deputado;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
@@ -10,13 +12,29 @@ import java.util.Optional;
 @Repository
 public interface IDeputadoRepository extends MongoRepository<Deputado, String> {
 
-    Optional<Deputado> findByIdCamara(Long idCamara);
+    Optional<Deputado> findByIdDeputado(Long idDeputado);
 
-    List<Deputado> findByPartido(String partido);
+    boolean existsByIdDeputado(Long idDeputado);
 
-    List<Deputado> findByUf(String uf);
+    Page<Deputado> findAllBySiglaPartido(String siglaPartido, Pageable pageable);
 
-    List<Deputado> findByAtivoTrue();
+    Page<Deputado> findAllBySiglaUF(String siglaUF, Pageable pageable);
 
-    boolean existsByIdCamara(Long idCamara);
+    Page<Deputado> findAllByIdLegislaturaAtual(Integer idLegislatura, Pageable pageable);
+
+    Page<Deputado> findAllByCondicaoEleitoral(String condicaoEleitoral, Pageable pageable);
+
+    Page<Deputado> findAllByEmExercicioTrue(Pageable pageable);
+
+    Page<Deputado> findAllByEmExercicioFalse(Pageable pageable);
+
+    Page<Deputado> findAllBySiglaPartidoAndSiglaUF(
+            String siglaPartido,
+            String siglaUF,
+            Pageable pageable
+    );
+
+    long countBySiglaPartido(String siglaPartido);
+    long countBySiglaUF(String siglaUF);
+    long countByEmExercicioTrue();
 }

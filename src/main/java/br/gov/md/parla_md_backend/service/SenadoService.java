@@ -187,7 +187,7 @@ public class SenadoService {
      * @param data Data limite
      * @return Lista de DTOs das matérias
      */
-    public List<MateriaDTO> buscarApresentadasApos(LocalDateTime data) {
+    public List<MateriaDTO> buscarApresentadasApos(LocalDate data) {
         log.debug("Buscando matérias apresentadas após: {}", data);
 
         return materiaRepository.findByDataApresentacaoAfter(data).stream()

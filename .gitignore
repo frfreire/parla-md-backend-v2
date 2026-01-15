@@ -1,4 +1,4 @@
-ELP.md
+HELP.md
 target/
 .mvn/
 !.mvn/wrapper/maven-wrapper.jar
@@ -41,6 +41,8 @@ build/
 
 ### Arquivos velhos ###
 *.old
+
+verificar-servicos.ps1
 
 ### Logs ###
 /tmp/

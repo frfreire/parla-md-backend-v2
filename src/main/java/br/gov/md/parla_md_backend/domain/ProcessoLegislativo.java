@@ -36,14 +36,10 @@ public class ProcessoLegislativo {
     @Indexed
     private PrioridadeProcesso prioridade;
 
-    @Builder.Default
-    private List<String> proposicaoIds = new ArrayList<>();
+    private List<String> proposicaoIds;
+    private List<String> materiaIds;
 
-    @Builder.Default
-    private List<String> materiaIds = new ArrayList<>();
-
-    @Builder.Default
-    private List<AreaImpacto> areasImpacto = new ArrayList<>();
+    private List<AreaImpacto> areasImpacto;
 
     private String temaPrincipal;
 
@@ -55,26 +51,19 @@ public class ProcessoLegislativo {
 
     private String analistaResponsavel;
 
-    @Builder.Default
-    private boolean requerAnaliseJuridica = false;
+    // Flags booleanas
+    private boolean requerAnaliseJuridica;
+    private boolean requerAnaliseOrcamentaria;
+    private boolean requerConsultaExterna;
 
-    @Builder.Default
-    private boolean requerAnaliseOrcamentaria = false;
-
-    @Builder.Default
-    private boolean requerConsultaExterna = false;
-
-    @Builder.Default
-    private int numeroPareceresPendentes = 0;
-
-    @Builder.Default
-    private int numeroPosicionamentosPendentes = 0;
+    // Contadores
+    private int numeroPareceresPendentes;
+    private int numeroPosicionamentosPendentes;
 
     private String observacoes;
 
-    @Builder.Default
-    private LocalDateTime dataCriacao = LocalDateTime.now();
-
+    // Timestamps
+    private LocalDateTime dataCriacao;
     private LocalDateTime dataAtualizacao;
     private LocalDateTime dataConclusao;
 

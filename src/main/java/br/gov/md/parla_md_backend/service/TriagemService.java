@@ -19,23 +19,23 @@ public class TriagemService {
     }
 
     public Page<Proposicao> getProposicoesNaoAvaliadas(Pageable pageable){
-        return propositionRepository.findByTriagemStatus(StatusTriagem.NAO_AVALIADO, pageable);
+        return propositionRepository.findByStatusTriagem(StatusTriagem.NAO_AVALIADO, pageable);
     }
 
     public Page<Proposicao> getProposicoesInteresse(Pageable pageable) {
-        return propositionRepository.findByTriagemStatus(StatusTriagem.INTERESSE, pageable);
+        return propositionRepository.findByStatusTriagem(StatusTriagem.INTERESSE, pageable);
     }
 
     public Page<Proposicao> getProposicoesDescartadas(Pageable pageable) {
-        return propositionRepository.findByTriagemStatus(StatusTriagem.DESCARTADO, pageable);
+        return propositionRepository.findByStatusTriagem(StatusTriagem.DESCARTADO, pageable);
     }
 
     public Proposicao avaliarProposicao(String id, StatusTriagem novoStatus, String observacao) {
         Proposicao proposicao = propositionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Proposição não encontrada"));
 
-        proposicao.setTriagemStatus(novoStatus);
-        proposicao.setObservacaoTriagem(observacao);
+        proposicao.setStatusProposicao(novoStatus.toString());
+        proposicao.setObservacao(observacao);
 
         return propositionRepository.save(proposicao);
     }

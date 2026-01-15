@@ -1,7 +1,7 @@
 package br.gov.md.parla_md_backend.service;
 
-import br.gov.md.parla_md_backend.domain.dto.old.AutenticacaoConfigDTO;
-import br.gov.md.parla_md_backend.domain.dto.old.UsuarioInfoDTO;
+import br.gov.md.parla_md_backend.domain.dto.AutenticacaoConfigDTO;
+import br.gov.md.parla_md_backend.domain.dto.UsuarioInfoDTO;
 import br.gov.md.parla_md_backend.exception.AutenticacaoException;
 import br.gov.md.parla_md_backend.exception.UsuarioNaoEncontradoException;
 import org.slf4j.Logger;
@@ -24,37 +24,6 @@ import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * Serviço responsável por gerenciar a autenticação e autorização na API do sistema Parla-MD.
- *
- * <p><strong>VERSÃO CORRIGIDA:</strong> Esta versão corrige problemas de compatibilidade
- * com Spring Boot 3.3.4 e adiciona tratamento robusto de erros.</p>
- *
- * <p>Nome alterado para AutenticacaoApiService para evitar conflito com o AutenticacaoService existente.</p>
- *
- * <p>Principais melhorias implementadas:</p>
- * <ul>
- *   <li>Compatibilidade total com Spring Boot 3.3.4</li>
- *   <li>Tratamento robusto de diferentes tipos de tokens</li>
- *   <li>Validação de claims e dados do JWT</li>
- *   <li>Logging detalhado para debug</li>
- *   <li>Fallbacks para diferentes configurações</li>
- * </ul>
- *
- * <p>Este serviço fornece funcionalidades para:</p>
- * <ul>
- *   <li>Obter informações do usuário autenticado</li>
- *   <li>Validar tokens JWT</li>
- *   <li>Verificar permissões e roles</li>
- *   <li>Construir URLs de logout</li>
- *   <li>Extrair claims dos tokens</li>
- *   <li>Fornecer configurações públicas do Keycloak</li>
- * </ul>
- *
- * @author fabricio.freire
- * @version 2.0
- * @since 2024-12-16
- */
 @Service
 public class AutenticacaoApiService {
 
@@ -63,7 +32,6 @@ public class AutenticacaoApiService {
     private final JwtDecoder jwtDecoder;
     private final RestTemplate restTemplate;
 
-    // Configurações do Keycloak injetadas via application.yml (compatível com existente)
     @Value("${keycloak.auth-server-url:http://localhost:8080}")
     private String keycloakServerUrl;
 
@@ -121,12 +89,6 @@ public class AutenticacaoApiService {
         }
     }
 
-    /**
-     * Valida um token JWT específico.
-     *
-     * @param token o token a ser validado
-     * @return true se o token é válido, false caso contrário
-     */
     public Boolean validarToken(String token) {
         if (!StringUtils.hasText(token)) {
             return false;
@@ -163,12 +125,6 @@ public class AutenticacaoApiService {
         }
     }
 
-    /**
-     * Verifica se o usuário atual possui uma permissão específica.
-     *
-     * @param permissao a permissão a ser verificada
-     * @return true se o usuário possui a permissão
-     */
     public Boolean verificarPermissao(String permissao) {
         try {
             UsuarioInfoDTO usuario = obterInformacoesUsuarioAtual();
@@ -185,12 +141,6 @@ public class AutenticacaoApiService {
         }
     }
 
-    /**
-     * Verifica se o usuário atual possui uma role específica.
-     *
-     * @param role a role a ser verificada
-     * @return true se o usuário possui a role
-     */
     public Boolean verificarRole(String role) {
         try {
             UsuarioInfoDTO usuario = obterInformacoesUsuarioAtual();
@@ -207,22 +157,11 @@ public class AutenticacaoApiService {
         }
     }
 
-    /**
-     * Obtém a URL de logout simples.
-     *
-     * @return URL de logout
-     */
     public String obterUrlLogout() {
         return String.format("%s/realms/%s/protocol/openid-connect/logout?client_id=%s",
                 keycloakServerUrl, keycloakRealm, keycloakClientId);
     }
 
-    /**
-     * Obtém a URL de logout com redirecionamento.
-     *
-     * @param redirectUri URI para redirecionamento após logout
-     * @return URL completa de logout
-     */
     public String obterUrlLogoutCompleto(String redirectUri) {
         StringBuilder url = new StringBuilder(obterUrlLogout());
 
@@ -233,11 +172,6 @@ public class AutenticacaoApiService {
         return url.toString();
     }
 
-    /**
-     * Extrai todos os claims do token JWT do usuário atual.
-     *
-     * @return mapa com os claims do token
-     */
     public Map<String, Object> extrairClaimsDoToken() {
         try {
             Jwt jwt = obterJwtDoContextoSeguro();
@@ -249,11 +183,6 @@ public class AutenticacaoApiService {
         }
     }
 
-    /**
-     * Extrai as roles do usuário atual.
-     *
-     * @return conjunto de roles
-     */
     public Set<String> extrairRolesDoUsuario() {
         try {
             UsuarioInfoDTO usuario = obterInformacoesUsuarioAtual();
@@ -265,11 +194,6 @@ public class AutenticacaoApiService {
         }
     }
 
-    /**
-     * Extrai as permissões do usuário atual.
-     *
-     * @return conjunto de permissões
-     */
     public Set<String> extrairPermissoesDoUsuario() {
         try {
             UsuarioInfoDTO usuario = obterInformacoesUsuarioAtual();
@@ -281,11 +205,6 @@ public class AutenticacaoApiService {
         }
     }
 
-    /**
-     * Obtém as configurações públicas do Keycloak para o frontend.
-     *
-     * @return AutenticacaoConfigDTO com as configurações
-     */
     @Cacheable(value = "keycloak-config")
     public AutenticacaoConfigDTO obterConfiguracaoPublica() {
         logger.debug("Construindo configuração pública do Keycloak");
@@ -314,11 +233,6 @@ public class AutenticacaoApiService {
                 .build();
     }
 
-    /**
-     * Verifica a saúde do sistema de autenticação.
-     *
-     * @return true se o sistema está saudável
-     */
     public Boolean verificarSaudeAutenticacao() {
         try {
             // Verificar se consegue acessar o well-known endpoint do Keycloak
@@ -336,11 +250,6 @@ public class AutenticacaoApiService {
         }
     }
 
-    /**
-     * Obtém o subject (ID) do usuário atual.
-     *
-     * @return subject do usuário ou null se não autenticado
-     */
     public String obterSubjectUsuarioAtual() {
         try {
             Jwt jwt = obterJwtDoContextoSeguro();
@@ -351,11 +260,6 @@ public class AutenticacaoApiService {
         }
     }
 
-    /**
-     * Verifica se há um usuário autenticado no contexto atual.
-     *
-     * @return true se há usuário autenticado
-     */
     public Boolean isUsuarioAutenticado() {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -368,13 +272,6 @@ public class AutenticacaoApiService {
         }
     }
 
-    /**
-     * Obtém o JWT do contexto de segurança de forma segura.
-     * Compatível com diferentes tipos de authentication tokens.
-     *
-     * @return JWT do usuário autenticado
-     * @throws AutenticacaoException se não há usuário autenticado
-     */
     private Jwt obterJwtDoContextoSeguro() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
@@ -399,12 +296,6 @@ public class AutenticacaoApiService {
         throw new AutenticacaoException("Token JWT não encontrado no contexto de segurança");
     }
 
-    /**
-     * Constrói o UsuarioInfoDTO a partir dos claims do JWT.
-     *
-     * @param jwt o token JWT
-     * @return UsuarioInfoDTO construído
-     */
     @SuppressWarnings("unchecked")
     private UsuarioInfoDTO construirUsuarioInfoDoJwt(Jwt jwt) {
         if (jwt == null) {
@@ -413,7 +304,6 @@ public class AutenticacaoApiService {
 
         Map<String, Object> claims = jwt.getClaims();
 
-        // Extrair informações básicas com validação
         String username = obterClaimSeguro(jwt, "preferred_username");
         String email = obterClaimSeguro(jwt, "email");
         String primeiroNome = obterClaimSeguro(jwt, "given_name");
@@ -421,13 +311,10 @@ public class AutenticacaoApiService {
         String nomeCompleto = obterClaimSeguro(jwt, "name");
         Boolean emailVerificado = jwt.getClaimAsBoolean("email_verified");
 
-        // Extrair roles do realm_access
         Set<String> roles = extrairRolesDoJwt(jwt);
 
-        // Construir permissões baseadas nas roles (simplificado)
         Set<String> permissoes = construirPermissoesDasRoles(roles);
 
-        // Extrair timestamps com validação
         LocalDateTime criadoEm = null;
         if (jwt.getIssuedAt() != null) {
             try {
@@ -453,13 +340,6 @@ public class AutenticacaoApiService {
                 .build();
     }
 
-    /**
-     * Obtém um claim de forma segura, tratando possíveis exceções.
-     *
-     * @param jwt o token JWT
-     * @param claimName nome do claim
-     * @return valor do claim ou null se não encontrado
-     */
     private String obterClaimSeguro(Jwt jwt, String claimName) {
         try {
             return jwt.getClaimAsString(claimName);
@@ -469,9 +349,6 @@ public class AutenticacaoApiService {
         }
     }
 
-    /**
-     * Extrai roles do JWT do Keycloak com tratamento robusto de erros.
-     */
     @SuppressWarnings("unchecked")
     private Set<String> extrairRolesDoJwt(Jwt jwt) {
         Set<String> roles = new HashSet<>();
@@ -487,7 +364,6 @@ public class AutenticacaoApiService {
                 }
             }
 
-            // Filtrar apenas roles relevantes para o sistema
             Set<String> rolesValidas = roles.stream()
                     .filter(Objects::nonNull)
                     .filter(role -> !role.trim().isEmpty())
@@ -504,9 +380,6 @@ public class AutenticacaoApiService {
         }
     }
 
-    /**
-     * Constrói permissões básicas baseadas nas roles.
-     */
     private Set<String> construirPermissoesDasRoles(Set<String> roles) {
         Set<String> permissoes = new HashSet<>();
 
@@ -526,13 +399,6 @@ public class AutenticacaoApiService {
         return permissoes;
     }
 
-    /**
-     * Constrói nome completo a partir de primeiro e último nome com validação.
-     *
-     * @param primeiroNome primeiro nome
-     * @param ultimoNome último nome
-     * @return nome completo construído ou null se ambos forem nulos/vazios
-     */
     private String construirNomeCompleto(String primeiroNome, String ultimoNome) {
         // Validar e limpar inputs
         String primeiro = (primeiroNome != null) ? primeiroNome.trim() : "";

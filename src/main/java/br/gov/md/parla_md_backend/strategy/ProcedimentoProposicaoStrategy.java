@@ -16,14 +16,14 @@ public class ProcedimentoProposicaoStrategy implements IProcedimentoStrategy<Pro
 
     @Override
     public void buscarESalvarProcedimentos(Proposicao proposicao) {
-        procedimentoProposicaoService.fetchAndSaveProcedures(proposicao);
+        procedimentoProposicaoService.buscarESalvarTramitacoes(proposicao);
     }
 
     @Override
     public String getTipoProcedimento() {
         return "PROPOSICAO";
     }
-    
+
     @Override
     public boolean podeProcessar(Object projeto) {
         return projeto instanceof Proposicao;

@@ -16,28 +16,15 @@ import java.util.Optional;
 @Repository
 public interface IAnaliseImpactoRepository extends MongoRepository<AnaliseImpacto, String> {
 
-    List<AnaliseImpacto> findByItemLegislativo(ItemLegislativo item);
 
-    Page<AnaliseImpacto> findByItemLegislativo(ItemLegislativo item, Pageable pageable);
-
-    List<AnaliseImpacto> findByAreaImpacto(AreaImpacto area);
-
-    Page<AnaliseImpacto> findByAreaImpacto(AreaImpacto area, Pageable pageable);
-
-    Optional<AnaliseImpacto> findByItemLegislativoAndAreaImpacto(
-            ItemLegislativo item,
-            AreaImpacto area
+    Optional<AnaliseImpacto> findByItemLegislativo_IdAndAreaImpacto_Id(
+            String itemLegislativoId,
+            String areaImpactoId
     );
-
-    List<AnaliseImpacto> findByNivelImpacto(String nivel);
-
-    List<AnaliseImpacto> findByTipoImpacto(String tipo);
 
     List<AnaliseImpacto> findByDataAnaliseAfter(LocalDateTime data);
 
     Page<AnaliseImpacto> findByDataAnaliseAfter(LocalDateTime data, Pageable pageable);
-
-    List<AnaliseImpacto> findByDataAnaliseBetween(LocalDateTime inicio, LocalDateTime fim);
 
     @Query("{ 'percentualImpacto': { $gte: ?0 } }")
     List<AnaliseImpacto> buscarComPercentualMinimo(Double percentualMinimo);
@@ -45,13 +32,46 @@ public interface IAnaliseImpactoRepository extends MongoRepository<AnaliseImpact
     @Query("{ 'dataExpiracao': { $lt: ?0 } }")
     List<AnaliseImpacto> buscarExpiradas(LocalDateTime agora);
 
-    long countByNivelImpacto(String nivel);
+    Page<AnaliseImpacto> findAllByItemLegislativo_Id(String itemLegislativoId, Pageable pageable);
 
-    long countByTipoImpacto(String tipo);
+    Page<AnaliseImpacto> findAllByAreaImpacto_Id(String areaImpactoId, Pageable pageable);
 
-    long countByAreaImpacto(AreaImpacto area);
+    Page<AnaliseImpacto> findAllByNivelImpacto(String nivelImpacto, Pageable pageable);
 
-    long countBySucesso(Boolean sucesso);
+    Page<AnaliseImpacto> findAllByTipoImpacto(String tipoImpacto, Pageable pageable);
 
-    void deleteByDataExpiracaoBefore(LocalDateTime dataLimite);
+    Page<AnaliseImpacto> findAllByNivelImpactoAndTipoImpacto(
+            String nivelImpacto,
+            String tipoImpacto,
+            Pageable pageable
+    );
+
+    Page<AnaliseImpacto> findAllByDataAnaliseBetween(
+            LocalDateTime inicio,
+            LocalDateTime fim,
+            Pageable pageable
+    );
+
+    Page<AnaliseImpacto> findAllBySucessoTrue(Pageable pageable);
+
+    Page<AnaliseImpacto> findAllBySucessoFalse(Pageable pageable);
+
+    Page<AnaliseImpacto> findAllByModeloVersao(String modeloVersao, Pageable pageable);
+
+    @Query("{ 'percentualImpacto': { $gte: ?0, $lte: ?1 } }")
+    Page<AnaliseImpacto> findAllByPercentualImpactoBetween(
+            Double minPercentual,
+            Double maxPercentual,
+            Pageable pageable
+    );
+
+    @Query("{ 'dataExpiracao': { $lt: ?0 } }")
+    List<AnaliseImpacto> findAllExpiradas(LocalDateTime dataAtual);
+
+    void deleteByDataExpiracaoBefore(LocalDateTime data);
+
+    long countByNivelImpacto(String nivelImpacto);
+    long countByTipoImpacto(String tipoImpacto);
+    long countBySucessoTrue();
+    long countBySucessoFalse();
 }

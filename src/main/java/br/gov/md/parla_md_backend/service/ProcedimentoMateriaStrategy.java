@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class ProcedimentoMateriaStrategy implements IProcedimentoStrategy<Materia> {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(ProcedimentoMateriaStrategy.class);
     private final ProcedimentoMateriaService procedimentoMateriaService;
 
@@ -21,11 +21,12 @@ public class ProcedimentoMateriaStrategy implements IProcedimentoStrategy<Materi
     public void buscarESalvarProcedimentos(Materia materia) {
         try {
             logger.debug("Processando procedimentos para matéria ID={}", materia.getId());
-            procedimentoMateriaService.fetchAndSaveProcedures(materia);
+
+            procedimentoMateriaService.buscarESalvarTramitacoes(materia.getCodigoMateria());
             logger.debug("Procedimentos salvos com sucesso para matéria ID={}", materia.getId());
         } catch (Exception e) {
-            logger.error("Erro ao processar procedimentos da matéria {}: {}", 
-                materia.getId(), e.getMessage());
+            logger.error("Erro ao processar procedimentos da matéria {}: {}",
+                    materia.getId(), e.getMessage());
             throw new DominioException("Falha ao processar procedimentos da matéria: " + e.getMessage(), e);
         }
     }

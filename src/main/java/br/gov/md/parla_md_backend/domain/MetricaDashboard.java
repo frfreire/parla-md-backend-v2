@@ -8,6 +8,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -22,7 +23,7 @@ public class MetricaDashboard {
     private String id;
 
     @Indexed
-    private LocalDateTime dataCalculo;
+    private LocalDate dataCalculo;
 
     @Indexed
     private String tipoMetrica;
@@ -67,12 +68,12 @@ public class MetricaDashboard {
 
     private Map<String, Object> tendencias;
 
-    private LocalDateTime proximaAtualizacao;
+    private LocalDate proximaAtualizacao;
 
     public boolean isPrecisaAtualizar() {
         if (proximaAtualizacao == null) {
             return true;
         }
-        return LocalDateTime.now().isAfter(proximaAtualizacao);
+        return LocalDate.now().isAfter(proximaAtualizacao);
     }
 }

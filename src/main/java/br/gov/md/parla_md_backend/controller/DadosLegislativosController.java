@@ -1,172 +1,244 @@
 package br.gov.md.parla_md_backend.controller;
 
 import br.gov.md.parla_md_backend.domain.Materia;
+import br.gov.md.parla_md_backend.domain.ProcedimentoProposicao;
 import br.gov.md.parla_md_backend.domain.Proposicao;
+import br.gov.md.parla_md_backend.domain.dto.MateriaDTO;
+import br.gov.md.parla_md_backend.domain.dto.PrevisaoDTO;
+import br.gov.md.parla_md_backend.domain.dto.ProcedimentoProposicaoDTO;
+import br.gov.md.parla_md_backend.domain.dto.SolicitarPrevisaoDTO;
 import br.gov.md.parla_md_backend.service.*;
-import br.gov.md.parla_md_backend.service.ai.PredictionService;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import br.gov.md.parla_md_backend.service.ProposicaoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
-import java.util.Optional;
-
+@Slf4j
 @RestController
-@RequestMapping("/api/public/legislative-data")
+@RequestMapping("/api/dados-legislativos")
+@RequiredArgsConstructor
 @Tag(name = "Dados Legislativos", description = "Operações relacionadas a dados legislativos")
+@SecurityRequirement(name = "bearer-key")
 public class DadosLegislativosController {
 
     private final CamaraService camaraService;
     private final SenadoService senadoService;
     private final ProposicaoService proposicaoService;
-    private final PredictionService predictionService;
-    private ProcedimentoProposicaoService procedimentoProposicaoService;
-    private ProcedimentoMateriaService procedimentoMateriaService;
+    private final PrevisaoService previsaoService;
+    private final ProcedimentoProposicaoService procedimentoProposicaoService;
+    private final ProcedimentoMateriaService procedimentoMateriaService;
 
     private final ConcurrentHashMap<String, String> updateStatuses = new ConcurrentHashMap<>();
 
-    public DadosLegislativosController(CamaraService camaraService,
-                                       SenadoService senadoService,
-                                       ProposicaoService proposicaoService,
-                                       PredictionService predictionService,
-                                       ProcedimentoProposicaoService procedimentoProposicaoService,
-                                       ProcedimentoMateriaService procedimentoMateriaService
-                                     ) {
-        this.camaraService = camaraService;
-        this.senadoService = senadoService;
-        this.proposicaoService = proposicaoService;
-        this.predictionService = predictionService;
-        this.procedimentoProposicaoService = procedimentoProposicaoService;
-        this.procedimentoMateriaService = procedimentoMateriaService;
+    @PostMapping("/camara/sincronizar")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Sincronizar proposições da Câmara",
+            description = "Busca e salva proposições mais recentes da API da Câmara dos Deputados"
+    )
+    public ResponseEntity<String> sincronizarProposicoesCamara() {
+        try {
+            camaraService.sincronizarProposicoes();
 
+            return ResponseEntity.ok("Sincronização de proposições iniciada");
+
+        } catch (Exception e) {
+            log.error("Erro ao sincronizar proposições da Câmara: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Erro: " + e.getMessage());
+        }
     }
 
-    @PostMapping("/fetch-camara")
-    public ResponseEntity<List<Proposicao>> fetchCamaraData() {
-        List<Proposicao> fetchedProposicaos = camaraService.fetchAndSavePropositions();
-        return ResponseEntity.ok(fetchedProposicaos);
+    @GetMapping("/proposicoes")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR', 'ANALISTA')")
+    @Operation(summary = "Listar todas as proposições")
+    public ResponseEntity<List<Proposicao>> listarProposicoes() {
+        List<Proposicao> proposicoes = proposicaoService.buscarTodas();
+        return ResponseEntity.ok(proposicoes);
     }
 
-    @GetMapping("/propositions")
-    public ResponseEntity<List<Proposicao>> getAllPropositions() {
-        List<Proposicao> proposicaos = proposicaoService.buscarTodasProposicoes();
-        return ResponseEntity.ok(proposicaos);
-    }
-
-    @GetMapping("/propositions/{id}")
+    @GetMapping("/proposicoes/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR', 'ANALISTA')")
     @Operation(
             summary = "Buscar proposição por ID",
-            description = "Retorna os detalhes de uma proposição específica com base no ID fornecido"
+            description = "Retorna detalhes de uma proposição específica"
     )
-    @ApiResponses(value = {
+    @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Proposição encontrada",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Proposicao.class))),
-            @ApiResponse(responseCode = "404", description = "Proposição não encontrada", content = @Content),
-            @ApiResponse(responseCode = "500", description = "Erro interno do servidor", content = @Content)
+                    content = @Content(schema = @Schema(implementation = Proposicao.class))),
+            @ApiResponse(responseCode = "404", description = "Proposição não encontrada", content = @Content)
     })
-    public ResponseEntity<Proposicao> buscarProposicaoPorId(@Parameter(description = "ID da proposição", required = true) @PathVariable String id) {
+    public ResponseEntity<Proposicao> buscarProposicao(
+            @Parameter(description = "ID da proposição") @PathVariable String id) {
+
         try {
-            Proposicao proposicao = proposicaoService.buscarProposicaoPorId(id);
+            Proposicao proposicao = proposicaoService.buscarPorId(id);
             return ResponseEntity.ok(proposicao);
+
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
     }
 
-    @GetMapping("/propositions/theme/{theme}")
-    public ResponseEntity<List<Proposicao>> buscaProposicaoPorTema(@PathVariable String theme) {
-        List<Proposicao> proposicaos = proposicaoService.buscarProposicoesPorTema(theme);
-        return ResponseEntity.ok(proposicaos);
+    @GetMapping("/proposicoes/tema/{tema}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR', 'ANALISTA')")
+    @Operation(summary = "Buscar proposições por tema")
+    public ResponseEntity<List<Proposicao>> buscarPorTema(@PathVariable String tema) {
+        List<Proposicao> proposicoes = proposicaoService.buscarPorTema(tema);
+        return ResponseEntity.ok(proposicoes);
     }
 
-    @PostMapping("/propositions")
+    @PostMapping("/proposicoes")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR')")
+    @Operation(summary = "Criar nova proposição")
     public ResponseEntity<Proposicao> criarProposicao(@RequestBody Proposicao proposicao) {
-        Proposicao savedProposicao = proposicaoService.salvarProposicao(proposicao);
-        return ResponseEntity.status(HttpStatus.CREATED).body(savedProposicao);
+        Proposicao salva = proposicaoService.salvar(proposicao);
+        return ResponseEntity.status(HttpStatus.CREATED).body(salva);
     }
 
-    @PutMapping("/propositions/{id}")
-    public ResponseEntity<Proposicao> atualizarProposicao(@PathVariable String id, @RequestBody Proposicao proposicao) {
+    @PutMapping("/proposicoes/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR')")
+    @Operation(summary = "Atualizar proposição")
+    public ResponseEntity<Proposicao> atualizarProposicao(
+            @PathVariable String id,
+            @RequestBody Proposicao proposicao) {
+
         try {
-            proposicao.setId(id);
-            Proposicao updatedProposicao = proposicaoService.atualizarProposicao(proposicao);
-            return ResponseEntity.ok(updatedProposicao);
+            Proposicao atualizada = proposicaoService.atualizar(id, proposicao);
+            return ResponseEntity.ok(atualizada);
+
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
     }
 
-    @DeleteMapping("/propositions/{id}")
+    @DeleteMapping("/proposicoes/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Excluir proposição")
     public ResponseEntity<Void> excluirProposicao(@PathVariable String id) {
         try {
-            proposicaoService.excluirProposicao(id);
+            proposicaoService.excluir(id);
             return ResponseEntity.noContent().build();
+
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
     }
 
-    @GetMapping("/matters")
-    public ResponseEntity<List<Materia>> buscarTodasMaterias(
-            @RequestParam(required = false) Integer ano,
-            @RequestParam(required = false) Integer itens) {
-        List<Materia> materias;
-        if (ano != null && itens != null) {
-            materias = senadoService.fetchAndSaveMatters(ano, itens);
-        } else if (ano != null) {
-            materias = senadoService.fetchAndSaveMatters(ano, senadoService.getDefaultItems());
-        } else if (itens != null) {
-            materias = senadoService.fetchAndSaveMatters(senadoService.getDefaultYear(), itens);
-        } else {
-            materias = senadoService.fetchAndSaveMatters();
-        }
-        return ResponseEntity.ok(materias);
-    }
+    @GetMapping("/proposicoes/{id}/procedimentos")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR', 'ANALISTA')")
+    @Operation(summary = "Buscar tramitações de uma proposição")
+    public ResponseEntity<List<ProcedimentoProposicaoDTO>> buscarProcedimentos(
+            @PathVariable String id) {
 
-    @GetMapping("/propositions/{id}/procedures")
-    public ResponseEntity<List<ProcedimentoProposicao>> getPropositionProcedures(@PathVariable String id) {
         try {
-            List<ProcedimentoProposicao> procedimentoProposicaos = camaraService.fetchAndSaveProcedures(Integer.parseInt(id));
-            return ResponseEntity.ok(procedimentoProposicaos);
-        } catch (NumberFormatException e) {
-            return ResponseEntity.badRequest().build();
+            List<ProcedimentoProposicaoDTO> procedimentos =
+                    camaraService.buscarProcedimentosPorProposicao(id);
+
+            return ResponseEntity.ok(procedimentos);
+
         } catch (Exception e) {
+            log.error("Erro ao buscar procedimentos: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
-    @PostMapping("/predict-approval")
-    public ResponseEntity<Double> predictApproval(@RequestBody Proposicao proposicao) {
-        double probability = predictionService.predictApprovalProbability(proposicao);
-        return ResponseEntity.ok(probability);
+    @PostMapping("/senado/sincronizar")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Sincronizar matérias do Senado",
+            description = "Busca e salva matérias mais recentes da API do Senado Federal"
+    )
+    public ResponseEntity<Map<String, Object>> sincronizarMateriasSenado(
+            @RequestParam(required = false) Integer ano,
+            @RequestParam(required = false) Integer itens) {
+
+        try {
+            List<MateriaDTO> materias;
+
+            if (ano != null && itens != null) {
+                materias = senadoService.buscarESalvarMaterias(ano, itens);
+            } else if (ano != null) {
+                materias = senadoService.buscarESalvarMaterias(ano, 100);
+            } else {
+                materias = senadoService.buscarESalvarMaterias();
+            }
+
+            return ResponseEntity.ok(Map.of(
+                    "status", "sucesso",
+                    "mensagem", "Sincronização de matérias concluída",
+                    "materiasProcessadas", materias.size()
+            ));
+
+        } catch (Exception e) {
+            log.error("Erro ao sincronizar matérias do Senado: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                    "status", "erro",
+                    "mensagem", "Erro: " + e.getMessage()
+            ));
+        }
     }
 
-    @GetMapping("/test")
-    public ResponseEntity<String> testEndpoint() {
-        return ResponseEntity.ok("API is working!");
+    @GetMapping("/materias")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR', 'ANALISTA')")
+    @Operation(summary = "Listar matérias do Senado")
+    public ResponseEntity<List<Materia>> listarMaterias() {
+        return ResponseEntity.ok(List.of());
     }
 
-    @PostMapping("/start-matter-update")
-    public ResponseEntity<String> startMatterUpdate() {
+    @PostMapping("/proposicoes/{id}/prever")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR', 'ANALISTA')")
+    @Operation(
+            summary = "Prever probabilidade de aprovação",
+            description = "Usa IA (Llama) para prever probabilidade de aprovação de uma proposição"
+    )
+    public ResponseEntity<PrevisaoDTO> preverAprovacao(@PathVariable String id) {
+        try {
+            SolicitarPrevisaoDTO solicitacao = SolicitarPrevisaoDTO.builder()
+                    .itemLegislativoId(id)
+                    .tipoPrevisao("APROVACAO")
+                    .forcarNovaPrevisao(false)
+                    .build();
+
+            PrevisaoDTO previsao = previsaoService.prever(solicitacao);
+
+            return ResponseEntity.ok(previsao);
+
+        } catch (Exception e) {
+            log.error("Erro ao prever aprovação: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping("/materias/atualizar-procedimentos")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Atualizar procedimentos de todas as matérias (async)")
+    public ResponseEntity<String> atualizarProcedimentosMaterias() {
         String updateId = "update-" + System.currentTimeMillis();
         updateStatuses.put(updateId, "Em andamento");
 
         CompletableFuture.runAsync(() -> {
             try {
-                procedimentoMateriaService.scheduledUpdateAllMatterProcedures();
+                procedimentoMateriaService.atualizarTodasTramitacoesAgendadas();
                 updateStatuses.put(updateId, "Concluído");
+
             } catch (Exception e) {
+                log.error("Erro na atualização em lote: {}", e.getMessage());
                 updateStatuses.put(updateId, "Erro: " + e.getMessage());
             }
         });
@@ -174,35 +246,22 @@ public class DadosLegislativosController {
         return ResponseEntity.ok("Atualização iniciada. ID: " + updateId);
     }
 
-    @GetMapping("/status-matter-update/{updateId}")
-    public ResponseEntity<String> getUpdateStatus(@PathVariable String updateId) {
+    @GetMapping("/status-atualizacao/{updateId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR')")
+    @Operation(summary = "Consultar status de atualização em lote")
+    public ResponseEntity<String> consultarStatus(@PathVariable String updateId) {
         String status = updateStatuses.get(updateId);
+
         if (status == null) {
             return ResponseEntity.notFound().build();
         }
+
         return ResponseEntity.ok(status);
     }
 
-    @PostMapping("/matter/{matterCode}")
-    public ResponseEntity<String> updateSingleMatter(@PathVariable String matterCode) {
-        try {
-            Optional<Materia> optionalMatter = Optional.ofNullable(senadoService.findMatterById(matterCode));
-            optionalMatter.ifPresentOrElse(
-                    matter -> {
-                        procedimentoMateriaService.fetchAndSaveProcedures(matter);
-                        senadoService.updateMatter(matter);
-                    },
-                    () -> { throw new RuntimeException("Matéria não encontrada"); }
-            );
-            return ResponseEntity.ok("Atualização da matéria " + matterCode + " concluída.");
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Erro ao atualizar matéria: " + e.getMessage());
-        }
-    }
-
-    @GetMapping("/last-update-matter")
-    public ResponseEntity<String> getLastUpdateTime() {
-        String lastUpdateTime = senadoService.getLastUpdateTime();
-        return ResponseEntity.ok("Última atualização: " + lastUpdateTime);
+    @GetMapping("/teste")
+    @Operation(summary = "Testar disponibilidade da API")
+    public ResponseEntity<String> testar() {
+        return ResponseEntity.ok("API Parla-MD operacional!");
     }
 }

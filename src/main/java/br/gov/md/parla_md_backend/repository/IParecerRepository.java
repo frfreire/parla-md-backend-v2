@@ -30,7 +30,7 @@ public interface IParecerRepository extends MongoRepository<Parecer, String> {
 
     long countByProcessoIdAndDataAprovacaoIsNotNull(String processoId);
 
-    Long countByStatusEmElaboracao();
+//    Long countByStatusEmElaboracao();
 
     long countByStatus(StatusParecer status);
 

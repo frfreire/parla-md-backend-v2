@@ -21,6 +21,8 @@ public interface IProcedimentoMateriaRepository extends MongoRepository<Procedim
     Optional<ProcedimentoMateria> findByCodigoMateriaAndNumeroProcedimento(
             Long codigoMateria, Integer numeroProcedimento);
 
+    Optional<ProcedimentoMateria> findByCodigoMateria(Long codigoMateria);
+
     long countByCodigoMateria(Long codigoMateria);
 
     Optional<ProcedimentoMateria> findFirstByCodigoMateriaOrderByDataTramitacaoDesc(Long codigoMateria);

@@ -163,7 +163,7 @@ public class ProposicaoController {
             @ApiResponse(responseCode = "403", description = "Acesso negado", content = @Content)
     })
     public ResponseEntity<List<ProposicaoDTO>> buscarPorAutor(
-            @Parameter(description = "ID do autor") @PathVariable String autorId) {
+            @Parameter(description = "ID do autor") @PathVariable Long autorId) {
         log.debug("Buscando proposições do autor: {}", autorId);
         List<ProposicaoDTO> proposicoes = camaraService.buscarPorAutor(autorId);
         return ResponseEntity.ok(proposicoes);
