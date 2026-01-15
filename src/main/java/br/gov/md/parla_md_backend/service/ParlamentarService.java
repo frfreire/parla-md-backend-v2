@@ -365,8 +365,8 @@ public class ParlamentarService {
     }
 
     @Cacheable("propositionsByParlamentarian")
-    public List<Proposicao> getPropositionsByParlamentarian(String parlamentarianId) {
-        return proposicaoRepository.findByAutorId(parlamentarianId);
+    public List<Proposicao> getPropositionsByParlamentarian(Long parlamentarId) {
+        return proposicaoRepository.findByIdDeputadoAutor(parlamentarId);
     }
 
     public String getPositionAboutSpecificThemes(String parlamentarianId) {

@@ -27,7 +27,6 @@ import java.util.stream.Collectors;
  * @version 1.0
  * @since 2024-12-16
  */
-@Component
 public class JwtAuthenticationConverter implements Converter<Jwt, AbstractAuthenticationToken> {
 
     private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationConverter.class);

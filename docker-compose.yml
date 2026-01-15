@@ -1,14 +1,10 @@
 # =========================================================================
-# PARLA-MD - DOCKER COMPOSE PRODUCTION-READY
+# PARLA-MD - DOCKER COMPOSE CORRIGIDO
 # =========================================================================
-# Melhorias:
-# - Recursos dimensionados conforme análise de provisionamento
-# - Network separada por função (app, data, monitoring)
-# - Healthchecks otimizados
-# - Melhoria no Logging
-# - Configurações de segurança melhoradas
-# - Ollama integrado
-# Data: 2025-12-05
+# Correções aplicadas:
+# 1. RabbitMQ: Removida variável deprecated RABBITMQ_VM_MEMORY_HIGH_WATERMARK
+# 2. Keycloak: Removido -XX:+UseG1GC para evitar conflito de garbage collectors
+# Data: 2026-01-13
 # =========================================================================
 networks:
   parlamd-app:
@@ -98,18 +94,15 @@ services:
     image: quay.io/keycloak/keycloak:23.0.7
     container_name: parlamd-keycloak
     environment:
-      # Database
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://keycloak-postgres:5432/keycloak
       KC_DB_USERNAME: keycloak
       KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak_secure_2024}
       KC_DB_SCHEMA: public
 
-      # Admin
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USER:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin_secure_2024}
 
-      # Server config
       KC_HOSTNAME_STRICT: false
       KC_HOSTNAME_STRICT_HTTPS: false
       KC_HTTP_ENABLED: true
@@ -118,17 +111,14 @@ services:
       KC_PROXY: edge
       KC_LOG_LEVEL: info
 
-      # Performance
       KC_CACHE: local
       KC_TRANSACTION_XA_ENABLED: false
 
-      # JVM
       JAVA_OPTS_APPEND: >-
         -Xms256m
         -Xmx768m
         -XX:MetaspaceSize=96M
         -XX:MaxMetaspaceSize=256m
-        -XX:+UseG1GC
         -XX:MaxGCPauseMillis=100
         -Djava.net.preferIPv4Stack=true
         -Dkeycloak.profile.feature.upload_scripts=enabled
@@ -219,7 +209,7 @@ services:
         max-file: "3"
 
   # =========================================================================
-  # RABBITMQ - Message Queue
+  # RABBITMQ - Message Queue (CORRIGIDO)
   # =========================================================================
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
@@ -228,7 +218,6 @@ services:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-parlamd}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-rabbit_secure_2024}
       RABBITMQ_DEFAULT_VHOST: parlamd
-      RABBITMQ_VM_MEMORY_HIGH_WATERMARK: 0.8
       RABBITMQ_DISK_FREE_LIMIT: 2GB
       RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: >-
         -rabbit log_levels [{connection,warning},{default,info}]
@@ -355,18 +344,15 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        BUILD_DATE: "2025-12-05"
+        BUILD_DATE: "2026-01-13"
         VCS_REF: production
     container_name: parlamd-backend
     environment:
-      # Profile
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILE:-docker}
 
-      # MongoDB
       SPRING_DATA_MONGODB_URI: mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-mongo_secure_2024}@mongodb:27017/parlamd?authSource=admin&retryWrites=true&w=majority&serverSelectionTimeoutMS=5000
       SPRING_DATA_MONGODB_AUTO_INDEX_CREATION: true
 
-      # RabbitMQ
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-parlamd}
@@ -375,7 +361,6 @@ services:
       SPRING_RABBITMQ_CONNECTION_TIMEOUT: 30000
       SPRING_RABBITMQ_REQUESTED_HEARTBEAT: 60
 
-      # Redis
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secure_2024}
@@ -384,29 +369,26 @@ services:
       SPRING_DATA_REDIS_LETTUCE_POOL_MAX_IDLE: 10
       SPRING_DATA_REDIS_LETTUCE_POOL_MIN_IDLE: 5
 
-      # OAuth2/Keycloak
       APP_SECURITY_OAUTH2_ENABLED: ${OAUTH2_ENABLED:-true}
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/parlamd
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/parlamd/protocol/openid-connect/certs
       KEYCLOAK_AUTH_SERVER_URL: http://keycloak:8080
       KEYCLOAK_REALM: parlamd
       KEYCLOAK_RESOURCE: parlamd-backend
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-parlamd-backend}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-mudar-em-producao}
 
-      # Ollama/LLM
       OLLAMA_API_URL: http://ollama:11434
       OLLAMA_MODEL: llama3.2:3b
       OLLAMA_TIMEOUT: 60000
       OLLAMA_TEMPERATURE: 0.7
 
-      # Cache LLM
       CACHE_LLM_TTL: 3600
       CACHE_LLM_MAX_ENTRIES: 1000
 
-      # APIs Externas
       CAMARA_API_URL: https://dadosabertos.camara.leg.br/api/v2
       SENADO_API_URL: https://legis.senado.leg.br/dadosabertos
 
-      # Notificações
       SPRING_MAIL_HOST: ${SMTP_HOST:-smtp.gmail.com}
       SPRING_MAIL_PORT: ${SMTP_PORT:-587}
       SPRING_MAIL_USERNAME: ${SMTP_USERNAME}
@@ -416,10 +398,8 @@ services:
 
       FIREBASE_SERVER_KEY: ${FIREBASE_SERVER_KEY}
 
-      # CORS
       CORS_ALLOWED_ORIGINS: ${FRONTEND_URL:-http://localhost:4200},${FRONTEND_URL_MOBILE:-http://localhost:3000}
 
-      # JVM
       JAVA_OPTS: >-
         -Xms512m
         -Xmx1536m
@@ -434,7 +414,6 @@ services:
         -Dfile.encoding=UTF-8
         -Duser.timezone=America/Sao_Paulo
 
-      # Logging
       LOGGING_LEVEL_ROOT: ${LOG_LEVEL_ROOT:-INFO}
       LOGGING_LEVEL_BR_GOV_MD_PARLA_MD_BACKEND: ${LOG_LEVEL_APP:-DEBUG}
       LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY: ${LOG_LEVEL_SECURITY:-INFO}
@@ -444,7 +423,6 @@ services:
       LOGGING_FILE_MAX_SIZE: 10MB
       LOGGING_FILE_MAX_HISTORY: 7
 
-      # Actuator
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,metrics,prometheus
       MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: when_authorized
       MANAGEMENT_HEALTH_MONGO_ENABLED: true

@@ -47,6 +47,16 @@ public class WorkflowConfig {
     public static final String ATUALIZACAO_API_EXCHANGE = "parlamd.atualizacao.api.exchange";
     public static final String ATUALIZACAO_API_ROUTING_KEY = "api.atualizar";
 
+    public static final String VOTACAO_QUEUE = "parlamd.votacao.queue";
+    public static final String VOTACAO_EXCHANGE = "parlamd.votacao.exchange";
+
+    // Key para mensagens que DEVEM ser processadas pelo Service (Input)
+    public static final String VOTACAO_PROCESSAR_ROUTING_KEY = "votacao.processar";
+
+    // Keys para eventos gerados após processamento (Output)
+    public static final String VOTACAO_CONCLUIDA_ROUTING_KEY = "votacao.concluida";
+    public static final String VOTO_REGISTRADO_ROUTING_KEY = "voto.registrado";
+
     public static final String DLQ_SUFFIX = ".dlq";
     public static final String DLX_SUFFIX = ".dlx";
 
@@ -54,17 +64,11 @@ public class WorkflowConfig {
     // MESSAGE CONVERTER
     // =========================================================================
 
-    /**
-     * Conversor de mensagens para JSON usando Jackson
-     */
     @Bean
     public MessageConverter jsonMessageConverter() {
         return new Jackson2JsonMessageConverter();
     }
 
-    /**
-     * RabbitTemplate configurado com conversor JSON
-     */
     @Bean
     public RabbitTemplate rabbitTemplate(
             ConnectionFactory connectionFactory,
@@ -172,7 +176,7 @@ public class WorkflowConfig {
         return QueueBuilder.durable(ANALISE_LLM_QUEUE)
                 .withArgument("x-dead-letter-exchange", ANALISE_LLM_EXCHANGE + DLX_SUFFIX)
                 .withArgument("x-dead-letter-routing-key", ANALISE_LLM_ROUTING_KEY + DLQ_SUFFIX)
-                .withArgument("x-message-ttl", 600000) // 10 minutos
+                .withArgument("x-message-ttl", 600000)
                 .build();
     }
 
@@ -249,5 +253,52 @@ public class WorkflowConfig {
                 .bind(atualizacaoApiDLQ())
                 .to(atualizacaoApiDLX())
                 .with(ATUALIZACAO_API_ROUTING_KEY + DLQ_SUFFIX);
+    }
+
+    // =========================================================================
+    // VOTAÇÃO - FILAS E EXCHANGES
+    // =========================================================================
+
+    @Bean
+    public Queue votacaoQueue() {
+        return QueueBuilder.durable(VOTACAO_QUEUE)
+                .withArgument("x-dead-letter-exchange", VOTACAO_EXCHANGE + DLX_SUFFIX)
+                .withArgument("x-dead-letter-routing-key", VOTACAO_PROCESSAR_ROUTING_KEY + DLQ_SUFFIX)
+                .withArgument("x-message-ttl", 3600000) // 1 hora
+                .build();
+    }
+
+    @Bean
+    public Queue votacaoDLQ() {
+        return QueueBuilder.durable(VOTACAO_QUEUE + DLQ_SUFFIX).build();
+    }
+
+    @Bean
+    public DirectExchange votacaoExchange() {
+        return new DirectExchange(VOTACAO_EXCHANGE);
+    }
+
+    @Bean
+    public DirectExchange votacaoDLX() {
+        return new DirectExchange(VOTACAO_EXCHANGE + DLX_SUFFIX);
+    }
+
+    /**
+     * Binding para processamento de entrada (Mensagens que devem ser consumidas pelo VotoParlamentarService)
+     */
+    @Bean
+    public Binding votacaoBinding() {
+        return BindingBuilder
+                .bind(votacaoQueue())
+                .to(votacaoExchange())
+                .with(VOTACAO_PROCESSAR_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding votacaoDLQBinding() {
+        return BindingBuilder
+                .bind(votacaoDLQ())
+                .to(votacaoDLX())
+                .with(VOTACAO_PROCESSAR_ROUTING_KEY + DLQ_SUFFIX);
     }
 }

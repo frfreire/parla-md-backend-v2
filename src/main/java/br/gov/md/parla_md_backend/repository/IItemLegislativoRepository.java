@@ -17,15 +17,35 @@ import java.util.Optional;
 @Repository
 public interface IItemLegislativoRepository extends MongoRepository<ItemLegislativo, String> {
 
-    Page<ItemLegislativo> findByCasa(Casa casa, Pageable pageable);
+    Page<ItemLegislativo> findAllByCasa(Casa casa, Pageable pageable);;
 
-    Page<ItemLegislativo> findByStatusTriagem(StatusTriagem status, Pageable pageable);
+    Page<ItemLegislativo> findAllByStatusTriagem(StatusTriagem status, Pageable pageable);
 
-    Page<ItemLegislativo> findByCasaAndStatusTriagem(Casa casa, StatusTriagem status, Pageable pageable);
+    Page<ItemLegislativo> findAllByCasaAndStatusTriagem(
+            Casa casa,
+            StatusTriagem status,
+            Pageable pageable
+    );
 
-    Optional<ItemLegislativo> findByCasaAndNumeroAndAno(Casa casa, String numero, Integer ano);
+    @Query("{ 'casa': ?0, 'statusTriagem': ?1, 'dataApresentacao': { $gte: ?2, $lte: ?3 } }")
+    Page<ItemLegislativo> findAllByCasaAndStatusAndPeriodo(
+            Casa casa,
+            StatusTriagem status,
+            LocalDate inicio,
+            LocalDate fim,
+            Pageable pageable
+    );
 
-    List<ItemLegislativo> findByTemaContaining(String tema);
+    Optional<ItemLegislativo> findByCasaAndNumeroAndAno(
+            Casa casa,
+            String numero,
+            Integer ano
+    );
+
+    Page<ItemLegislativo> findAllByTemaContainingIgnoreCase(
+            String tema,
+            Pageable pageable
+    );
 
     List<ItemLegislativo> findByAno(Integer ano);
 
@@ -33,7 +53,11 @@ public interface IItemLegislativoRepository extends MongoRepository<ItemLegislat
 
     List<ItemLegislativo> findByDataApresentacaoAfter(LocalDate data);
 
-    List<ItemLegislativo> findByDataApresentacaoBetween(LocalDate inicio, LocalDate fim);
+    Page<ItemLegislativo> findAllByDataApresentacaoBetween(
+            LocalDate inicio,
+            LocalDate fim,
+            Pageable pageable
+    );
 
     List<ItemLegislativo> findByAprovada(boolean aprovada);
 
@@ -44,18 +68,18 @@ public interface IItemLegislativoRepository extends MongoRepository<ItemLegislat
     @Query("{ 'ementa': { $regex: ?0, $options: 'i' } }")
     List<ItemLegislativo> buscarPorEmentaContendo(String texto);
 
-    @Query("{ 'keywords': { $regex: ?0, $options: 'i' } }")
-    List<ItemLegislativo> buscarPorKeyword(String keyword);
+    Page<ItemLegislativo> findAllByKeywordsContainingIgnoreCase(
+            String keyword,
+            Pageable pageable
+    );
 
     @Query("{ 'dataUltimaAtualizacao': { $gte: ?0 } }")
     List<ItemLegislativo> buscarAtualizadosApos(LocalDateTime data);
 
     long countByCasa(Casa casa);
-
     long countByStatusTriagem(StatusTriagem status);
-
+    long countByCasaAndStatusTriagem(Casa casa, StatusTriagem status);
     long countByAno(Integer ano);
-
     long countByAprovada(boolean aprovada);
 
     @Query(value = "{ 'casa': ?0, 'ano': ?1 }", count = true)

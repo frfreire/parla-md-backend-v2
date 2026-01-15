@@ -11,7 +11,6 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,19 +19,46 @@ public interface IMateriaRepository extends MongoRepository<Materia, String> {
 
     Optional<Materia> findByCodigoMateria(Long codigoMateria);
 
+    boolean existsByCodigoMateria(Long codigoMateria);
+
     Optional<Materia> findByNumeroAndAno(String numero, Integer ano);
+
+    Page<Materia> findAllByTipoMateria(
+            TipoMateria tipo,
+            Pageable pageable
+    );
 
     Optional<Materia> findByTipoMateriaAndNumeroAndAno(TipoMateria tipoMateria, String numero, Integer ano);
 
-    boolean existsByCodigoMateria(Long codigoMateria);
-
     List<Materia> findByAno(Integer ano);
+
+    Page<Materia> findAllBySituacaoAtual(
+            String situacao,
+            Pageable pageable
+    );
 
     Page<Materia> findByAno(Integer ano, Pageable pageable);
 
+    Page<Materia> findAllByIndicadorTramitando(
+            String indicador,
+            Pageable pageable
+    );
+
     Page<Materia> findByAnoBetween(Integer anoInicio, Integer anoFim, Pageable pageable);
 
+    List<Materia> findByDataUltimaAtualizacaoBefore(LocalDateTime data);
+
     List<Materia> findByTipoMateria(TipoMateria tipoMateria);
+
+    @Query("{ " +
+            "'ementaMateria': { $regex: ?0, $options: 'i' }, " +
+            "'indicadorTramitando': ?1 " +
+            "}")
+    Page<Materia> findAllByEmentaContainingAndTramitando(
+            String ementa,
+            String tramitando,
+            Pageable pageable
+    );
 
     Page<Materia> findByTipoMateria(TipoMateria tipoMateria, Pageable pageable);
 
@@ -56,13 +82,20 @@ public interface IMateriaRepository extends MongoRepository<Materia, String> {
     @Query("{ 'statusTriagem': { $in: ['NAO_AVALIADO', null] } }")
     Page<Materia> findMateriasNaoAvaliadas(Pageable pageable);
 
-    List<Materia> findByDataApresentacaoAfter(LocalDateTime data);
-
     List<Materia> findByDataApresentacaoAfter(LocalDate data);
 
-    Page<Materia> findByDataApresentacaoBetween(LocalDate dataInicio, LocalDate dataFim, Pageable pageable);
+    Page<Materia> findByDataApresentacaoBetween(
+            LocalDate dataInicio,
+            LocalDate dataFim,
+            Pageable pageable
+    );
 
-    Page<Materia> findByDataUltimaAtualizacaoAfter(LocalDateTime data, Pageable pageable);
+    long countByDataApresentacaoBetween(
+            LocalDate dataInicio,
+            LocalDate dataFim
+    );
+
+    Page<Materia> findByDataUltimaAtualizacaoAfter(LocalDate data, Pageable pageable);
 
     Page<Materia> findByCodigoParlamentarAutor(Long codigoParlamentarAutor, Pageable pageable);
 
@@ -103,6 +136,9 @@ public interface IMateriaRepository extends MongoRepository<Materia, String> {
 
     long countByAprovada(boolean aprovada);
 
+    long countBySituacaoAtual(String situacao);
+
+
     @Query("{ $or: [ " +
             "{ 'ementa': { $regex: 'defesa|militar|forças armadas|exército|marinha|aeronáutica|segurança nacional', $options: 'i' } }, " +
             "{ 'tema': { $regex: 'defesa|militar|segurança', $options: 'i' } }, " +
@@ -115,5 +151,4 @@ public interface IMateriaRepository extends MongoRepository<Materia, String> {
 
     Page<Materia> findByTipoMateriaIn(List<TipoMateria> tipos, Pageable pageable);
 
-    Collection<Object> findByDataApresentacaoBetween(LocalDateTime inicio, LocalDateTime fim);
 }

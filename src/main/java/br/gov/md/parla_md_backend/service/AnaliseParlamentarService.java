@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -98,10 +99,8 @@ public class AnaliseParlamentarService {
             String parlamentarId,
             String tema) {
 
-        Parlamentar parlamentar = buscarParlamentar(parlamentarId);
-
         AnaliseParlamentar analise = analiseRepository
-                .findByParlamentarAndTema(parlamentar, tema)
+                .findByParlamentar_IdAndTema(parlamentarId, tema)
                 .orElseThrow(() -> new RecursoNaoEncontradoException(
                         "Análise não encontrada para parlamentar " + parlamentarId + " e tema " + tema));
 
@@ -109,15 +108,14 @@ public class AnaliseParlamentarService {
     }
 
     public List<AnaliseParlamentarDTO> buscarAnalisesPorParlamentar(String parlamentarId) {
-        Parlamentar parlamentar = buscarParlamentar(parlamentarId);
 
-        return analiseRepository.findByParlamentar(parlamentar).stream()
+        return analiseRepository.findAllByParlamentar_Id(parlamentarId, PageRequest.of(0, 20)).stream()
                 .map(AnaliseParlamentarDTO::from)
                 .collect(Collectors.toList());
     }
 
     public Page<AnaliseParlamentarDTO> buscarAnalisesPorTema(String tema, Pageable pageable) {
-        return analiseRepository.findByTema(tema, pageable)
+        return analiseRepository.findByTema(tema, PageRequest.of(0,20))
                 .map(AnaliseParlamentarDTO::from);
     }
 
@@ -208,7 +206,7 @@ public class AnaliseParlamentarService {
         LocalDateTime limite = LocalDateTime.now().minusSeconds(cacheTtlSegundos);
 
         return analiseRepository
-                .findByParlamentarAndTema(parlamentar, tema)
+                .findByParlamentar_IdAndTema(parlamentar.getId(), tema)
                 .filter(a -> a.getDataAnalise().isAfter(limite))
                 .filter(a -> a.getSucesso() != null && a.getSucesso())
                 .orElse(null);

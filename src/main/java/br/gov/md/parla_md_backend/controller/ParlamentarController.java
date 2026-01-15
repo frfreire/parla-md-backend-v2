@@ -160,13 +160,13 @@ public class ParlamentarController {
             @ApiResponse(responseCode = "200", description = "Parlamentar encontrado"),
             @ApiResponse(responseCode = "404", description = "Parlamentar não encontrado", content = @Content)
     })
-    public ResponseEntity<Map<String, Object>> buscarPorId(@PathVariable String id) {
+    public ResponseEntity<Map<String, Object>> buscarPorId(@PathVariable Long id) {
         log.debug("Buscando parlamentar: {}", id);
 
         try {
-            Parlamentar parlamentar = parlamentarService.getParlamentarianInfo(id);
+            Parlamentar parlamentar = parlamentarService.getParlamentarianInfo(id.toString());
             List<Proposicao> proposicoes = parlamentarService.getPropositionsByParlamentarian(id);
-            String posicionamento = parlamentarService.getPositionAboutSpecificThemes(id);
+            String posicionamento = parlamentarService.getPositionAboutSpecificThemes(id.toString());
 
             Map<String, Object> response = new HashMap<>();
             response.put("parlamentar", parlamentar);

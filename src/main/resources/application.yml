@@ -64,12 +64,13 @@ server:
     enabled: true
     mime-types: application/json,application/xml,text/html,text/xml,text/plain
 
-# Configuração do Keycloak
+# Configuração do Keycloak - SIMPLIFICADO (usa variáveis de ambiente)
 keycloak:
   realm: ${KEYCLOAK_REALM:parlamd}
-  auth-server-url: ${KEYCLOAK_AUTH_URL:http://localhost:8080}
+  auth-server-url: ${KEYCLOAK_AUTH_SERVER_URL:http://localhost:8080}
   ssl-required: external
-  resource: ${KEYCLOAK_CLIENT_ID:parlamd-backend}
+  client-id: ${KEYCLOAK_CLIENT_ID:parlamd-backend}
+  client-secret: ${KEYCLOAK_CLIENT_SECRET}
   verify-token-audience: true
 
 # Configurações específicas da aplicação
@@ -77,9 +78,9 @@ app:
   # Configuração de CORS
   cors:
     allowed-origins:
-      - ${FRONTEND_URL: http://localhost:4200}
-      - ${FRONTEND_URL_DEV: http://localhost:3000}
-      - ${FRONTEND_URL_PROD: https://parlamd.gov.br}
+      - ${FRONTEND_URL:http://localhost:4200}
+      - ${FRONTEND_URL_DEV:http://localhost:3000}
+      - ${FRONTEND_URL_PROD:https://parlamd.gov.br}
     allowed-methods: GET,POST,PUT,DELETE,PATCH,OPTIONS
     allowed-headers: "*"
     allow-credentials: true
@@ -98,7 +99,7 @@ app:
       requests-per-minute: 100
 
 ollama:
-  url:${OLLAMA_SERVER: http://localhost:11434}
+  url: ${OLLAMA_SERVER:http://localhost:11434}
   model: llama3.2:3b
   timeout: 60000
   temperature: 0.7
@@ -146,8 +147,10 @@ logging:
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
   file:
     name: logs/parlamd-backend.log
-    max-size: 100MB
-    max-history: 30
+  logback:
+    rollingpolicy:
+      max-file-size: 100MB
+      max-history: 30
 
 # Configuração do Actuator
 management:
@@ -172,10 +175,10 @@ management:
       enabled: true
     git:
       mode: full
-  metrics:
-    export:
-      prometheus:
-
+  prometheus:
+    metrics:
+      export:
+        enabled: true
 
 # Configurações de APIs Externas
 camara:
@@ -204,19 +207,16 @@ spring:
     activate:
       on-profile: no-auth
 
-  # MongoDB para desenvolvimento
   data:
     mongodb:
       uri: mongodb://localhost:27017/parlamd_dev
 
-  # RabbitMQ para desenvolvimento
   rabbitmq:
     host: localhost
     port: 5672
     username: guest
     password: guest
 
-# RabbitMQ Exchanges para no-auth
 rabbitmq:
   exchanges:
     model-training: model-training-exchange
@@ -231,7 +231,6 @@ rabbitmq:
     notifications: notifications
     analysis: analysis
 
-# DESABILITAR OAuth2 completamente
 app:
   security:
     oauth2:
@@ -241,7 +240,6 @@ app:
     rate-limiting:
       enabled: false
 
-# Logging para desenvolvimento
 logging:
   level:
     br.gov.md.parla_md_backend: DEBUG
@@ -255,19 +253,16 @@ spring:
     activate:
       on-profile: dev
 
-  # MongoDB para desenvolvimento
   data:
     mongodb:
       uri: mongodb://localhost:27017/parlamd_dev
 
-  # RabbitMQ para desenvolvimento
   rabbitmq:
     host: localhost
     port: 5672
     username: guest
     password: guest
 
-# RabbitMQ Exchanges para dev
 rabbitmq:
   exchanges:
     model-training: model-training-exchange
@@ -282,12 +277,12 @@ rabbitmq:
     notifications: notifications
     analysis: analysis
 
-# Keycloak para desenvolvimento
 keycloak:
   auth-server-url: http://localhost:8080
   realm: parlamd
+  client-id: parlamd-backend
+  client-secret: ${KEYCLOAK_CLIENT_SECRET:dev-secret-change-me}
 
-# Configurações específicas de desenvolvimento
 app:
   security:
     token-validation:
@@ -295,7 +290,6 @@ app:
     rate-limiting:
       enabled: false
 
-# Logging mais detalhado para desenvolvimento
 logging:
   level:
     br.gov.md.parla_md_backend: DEBUG
@@ -310,19 +304,16 @@ spring:
     activate:
       on-profile: test
 
-  # MongoDB para testes
   data:
     mongodb:
       uri: mongodb://localhost:27017/parlamd_test
 
-  # RabbitMQ para testes
   rabbitmq:
     host: localhost
     port: 5672
     username: guest
     password: guest
 
-# RabbitMQ Exchanges para test
 rabbitmq:
   exchanges:
     model-training: model-training-exchange-test
@@ -337,12 +328,12 @@ rabbitmq:
     notifications: notifications.test
     analysis: analysis.test
 
-# Keycloak para testes
 keycloak:
   auth-server-url: http://localhost:8080
   realm: parlamd-test
+  client-id: parlamd-backend-test
+  client-secret: ${KEYCLOAK_CLIENT_SECRET:test-secret}
 
-# Configurações específicas de teste
 app:
   security:
     token-validation:
@@ -350,7 +341,6 @@ app:
     rate-limiting:
       enabled: false
 
-# Logging mais limpo para testes
 logging:
   level:
     br.gov.md.parla_md_backend: WARN
@@ -364,12 +354,10 @@ spring:
     activate:
       on-profile: prod
 
-  # MongoDB para produção
   data:
     mongodb:
       uri: ${MONGODB_URI}
 
-  # RabbitMQ para produção
   rabbitmq:
     host: ${SPRING_RABBITMQ_HOST}
     port: ${SPRING_RABBITMQ_PORT}
@@ -378,7 +366,6 @@ spring:
     ssl:
       enabled: true
 
-# RabbitMQ Exchanges para prod
 rabbitmq:
   exchanges:
     model-training: ${RABBITMQ_EXCHANGE_MODEL_TRAINING:model-training-exchange}
@@ -393,13 +380,13 @@ rabbitmq:
     notifications: ${RABBITMQ_ROUTING_KEY_NOTIFICATIONS:notifications}
     analysis: ${RABBITMQ_ROUTING_KEY_ANALYSIS:analysis}
 
-# Keycloak para produção
 keycloak:
   auth-server-url: ${KEYCLOAK_AUTH_URL}
   realm: ${KEYCLOAK_REALM}
+  client-id: ${KEYCLOAK_CLIENT_ID}
+  client-secret: ${KEYCLOAK_CLIENT_SECRET}
   ssl-required: all
 
-# Servidor para produção
 server:
   port: ${SERVER_PORT:8081}
   ssl:
@@ -408,7 +395,6 @@ server:
     key-store-password: ${SSL_KEYSTORE_PASSWORD}
     key-store-type: PKCS12
 
-# Configurações específicas de produção
 app:
   cors:
     allowed-origins:
@@ -421,7 +407,6 @@ app:
       enabled: true
       requests-per-minute: 60
 
-# Logging para produção
 logging:
   level:
     root: INFO
@@ -431,61 +416,16 @@ logging:
     name: /var/log/parlamd/parlamd-backend.log
 
 ---
-# Profile para Docker
+# Profile para Docker (usa variáveis do docker-compose)
 spring:
   config:
     activate:
       on-profile: docker
 
-  # MongoDB para Docker
   data:
     mongodb:
-      uri: ${SPRING_DATA_MONGODB_URI:mongodb://admin:admin123@mongodb:27017/parlamd?authSource=admin}
+      uri: ${SPRING_DATA_MONGODB_URI}
 
-  # RabbitMQ para Docker
   rabbitmq:
-    host: ${SPRING_RABBITMQ_HOST:rabbitmq}
-    port: ${SPRING_RABBITMQ_PORT:5672}
-    username: ${SPRING_RABBITMQ_USERNAME:guest}
-    password: ${SPRING_RABBITMQ_PASSWORD:guest}
-    virtual-host: ${SPRING_RABBITMQ_VIRTUAL_HOST:/}
-
-# RabbitMQ Exchanges para Docker
-rabbitmq:
-  exchanges:
-    model-training: model-training-exchange
-    notifications: notifications-exchange
-    analysis: analysis-exchange
-  queues:
-    model-training: model-training-queue
-    notifications: notifications-queue
-    analysis: analysis-queue
-  routing-keys:
-    model-training: model.training
-    notifications: notifications
-    analysis: analysis
-
-# Keycloak para Docker
-keycloak:
-  auth-server-url: ${KEYCLOAK_AUTH_SERVER_URL:http://keycloak:8080}
-  realm: ${KEYCLOAK_REALM:parlamd}
-
-# Configurações específicas do Docker
-app:
-  cors:
-    allowed-origins:
-      - ${FRONTEND_URL:http://localhost:4200}
-      - ${FRONTEND_URL_DEV:http://localhost:3000}
-  security:
-    token-validation:
-      enabled: true
-    rate-limiting:
-      enabled: true
-      requests-per-minute: 100
-
-# Logging para Docker
-logging:
-  level:
-    root: INFO
-    br.gov.md.parla_md_backend: INFO
-    org.springframework.security: INFO
+    host: ${SPRING_RABBITMQ_HOST}
+    port: ${SPRING

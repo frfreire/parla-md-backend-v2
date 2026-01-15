@@ -14,14 +14,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
-import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
 import java.util.DoubleSummaryStatistics;
 
 import java.time.LocalDateTime;
@@ -87,10 +89,10 @@ public class MetricasDesempenhoService {
     public KPIsDTO obterKPIs() {
         log.debug("Calculando KPIs do sistema");
 
-        LocalDateTime agora = LocalDateTime.now();
-        LocalDateTime inicioHoje = agora.toLocalDate().atStartOfDay();
-        LocalDateTime inicioSemana = agora.minusWeeks(1);
-        LocalDateTime inicioMes = agora.minusMonths(1);
+        LocalDate agora = LocalDate.now();
+        LocalDate inicioHoje = LocalDate.from(agora.atStartOfDay());
+        LocalDate inicioSemana = agora.minusWeeks(1);
+        LocalDate inicioMes = agora.minusMonths(1);
 
         long documentosNovosHoje = contarDocumentosNovos(inicioHoje, agora);
         long documentosNovosEstaSemana = contarDocumentosNovos(inicioSemana, agora);
@@ -99,9 +101,9 @@ public class MetricasDesempenhoService {
         long totalAtivos = proposicaoRepository.count() + materiaRepository.count();
 
         double crescimentoSemanal = calcularTaxaCrescimento(
-                inicioSemana.minusWeeks(1), inicioSemana, inicioSemana, agora);
+                inicioSemana, inicioSemana, inicioSemana, agora);
         double crescimentoMensal = calcularTaxaCrescimento(
-                inicioMes.minusMonths(1), inicioMes, inicioMes, agora);
+                inicioMes, inicioMes, inicioMes, agora);
 
         return KPIsDTO.builder()
                 .totalDocumentosAtivos(totalAtivos)
@@ -219,9 +221,9 @@ public class MetricasDesempenhoService {
     private MetricaDashboard calcularMetricasCompletas() {
         log.debug("Calculando métricas completas do sistema");
 
-        LocalDateTime agora = LocalDateTime.now();
-        LocalDateTime umaSemanaAtras = agora.minusWeeks(1);
-        LocalDateTime umMesAtras = agora.minusMonths(1);
+        LocalDate agora = LocalDate.now();
+        LocalDate umaSemanaAtras = agora.minusWeeks(1);
+        LocalDate umMesAtras = agora.minusMonths(1);
 
         long totalProposicoes = proposicaoRepository.count();
         long totalMaterias = materiaRepository.count();
@@ -263,7 +265,7 @@ public class MetricasDesempenhoService {
                 .taxaRejeicao(calcularTaxaRejeicao())
                 .kpis(kpis)
                 .tendencias(tendencias)
-                .proximaAtualizacao(agora.plusSeconds(cacheTtlSegundos))
+                .proximaAtualizacao(agora.plusWeeks(cacheTtlSegundos))
                 .build();
 
         return metricaRepository.save(metrica);
@@ -335,20 +337,21 @@ public class MetricasDesempenhoService {
                 .summaryStatistics();
     }
 
-    private long contarDocumentosNovos(LocalDateTime inicio, LocalDateTime fim) {
+    private long contarDocumentosNovos(LocalDate inicio, LocalDate fim) {
         long proposicoes = proposicaoRepository
-                .findByDataApresentacaoBetween(inicio, fim).size();
+                .countByDataApresentacaoBetween(inicio, fim);
+
         long materias = materiaRepository
-                .findByDataApresentacaoBetween(inicio, fim).size();
+                .countByDataApresentacaoBetween(inicio, fim);
 
         return proposicoes + materias;
     }
 
     private double calcularTaxaCrescimento(
-            LocalDateTime periodoAnteriorInicio,
-            LocalDateTime periodoAnteriorFim,
-            LocalDateTime periodoAtualInicio,
-            LocalDateTime periodoAtualFim) {
+            LocalDate periodoAnteriorInicio,
+            LocalDate periodoAnteriorFim,
+            LocalDate periodoAtualInicio,
+            LocalDate periodoAtualFim) {
 
         long anterior = contarDocumentosNovos(periodoAnteriorInicio, periodoAnteriorFim);
         long atual = contarDocumentosNovos(periodoAtualInicio, periodoAtualFim);
@@ -404,12 +407,12 @@ public class MetricasDesempenhoService {
         Map<String, Object> dados = new HashMap<>();
 
         dados.put("documentosUltimos30Dias", contarDocumentosNovos(
-                LocalDateTime.now().minusDays(30), LocalDateTime.now()));
+                LocalDate.now().minusDays(30), LocalDate.now()));
         dados.put("crescimentoMensal", calcularTaxaCrescimento(
-                LocalDateTime.now().minusMonths(2),
-                LocalDateTime.now().minusMonths(1),
-                LocalDateTime.now().minusMonths(1),
-                LocalDateTime.now()));
+                LocalDate.now().minusMonths(2),
+                LocalDate.now().minusMonths(1),
+                LocalDate.now().minusMonths(1),
+                LocalDate.now()));
 
         dados.put("temasPopulares", calcularDistribuicaoPorTema());
         dados.put("partidosAtivos", calcularDistribuicaoPorPartido());
@@ -585,10 +588,10 @@ public class MetricasDesempenhoService {
     private Map<String, Object> calcularKPIsMap() {
         Map<String, Object> kpis = new HashMap<>();
 
-        LocalDateTime agora = LocalDateTime.now();
-        LocalDateTime inicioHoje = agora.toLocalDate().atStartOfDay();
-        LocalDateTime inicioSemana = agora.minusWeeks(1);
-        LocalDateTime inicioMes = agora.minusMonths(1);
+        LocalDate agora = LocalDate.now();
+        LocalDate inicioHoje = agora;
+        LocalDate inicioSemana = agora.minusWeeks(1);
+        LocalDate inicioMes = agora.minusMonths(1);
 
         kpis.put("totalDocumentosAtivos",
                 proposicaoRepository.count() + materiaRepository.count());
@@ -646,11 +649,11 @@ public class MetricasDesempenhoService {
                 .map(Map.Entry::getKey)
                 .toList();
 
-        LocalDateTime agora = LocalDateTime.now();
-        LocalDateTime umaSemanaAtras = agora.minusWeeks(1);
-        LocalDateTime duasSemanasAtras = agora.minusWeeks(2);
-        LocalDateTime umMesAtras = agora.minusMonths(1);
-        LocalDateTime doisMesesAtras = agora.minusMonths(2);
+        LocalDate agora = LocalDate.now();
+        LocalDate umaSemanaAtras = agora.minusWeeks(1);
+        LocalDate duasSemanasAtras = agora.minusWeeks(2);
+        LocalDate umMesAtras = agora.minusMonths(1);
+        LocalDate doisMesesAtras = agora.minusMonths(2);
 
         double crescimentoSemanal = calcularTaxaCrescimento(
                 duasSemanasAtras, umaSemanaAtras, umaSemanaAtras, agora);
@@ -731,7 +734,7 @@ public class MetricasDesempenhoService {
                 .filter(p -> p.getPrazo().isBefore(agora))
                 .filter(p -> {
 
-                    StatusParecer status = p.getStatusParecer();
+                    StatusParecer status = p.getStatus();
                     return status != null && status != StatusParecer.APROVADO;
                 })
                 .count();
@@ -781,9 +784,9 @@ public class MetricasDesempenhoService {
     }
 
     private double calcularEficiencia() {
-        LocalDateTime umMesAtras = LocalDateTime.now().minusMonths(1);
+        LocalDate umMesAtras = LocalDate.now().minusMonths(1);
 
-        long documentosNovos = contarDocumentosNovos(umMesAtras, LocalDateTime.now());
+        long documentosNovos = contarDocumentosNovos(umMesAtras, LocalDate.now());
         long documentosProcessados = contarDocumentosProcessados(umMesAtras);
 
         if (documentosNovos == 0) {
@@ -795,10 +798,10 @@ public class MetricasDesempenhoService {
         return Math.min(eficiencia, 1.0);
     }
 
-    private long contarDocumentosProcessados(LocalDateTime desde) {
+    private long contarDocumentosProcessados(LocalDate desde) {
         return proposicaoRepository.findAll().stream()
                 .filter(p -> p.getDataUltimaAtualizacao() != null)
-                .filter(p -> p.getDataUltimaAtualizacao().isAfter(desde))
+                .filter(p -> p.getDataUltimaAtualizacao().isAfter(desde.atStartOfDay()))
                 .filter(p -> p.getStatusTriagem() != StatusTriagem.NAO_AVALIADO)
                 .count();
     }
@@ -855,9 +858,9 @@ public class MetricasDesempenhoService {
                     eficiencia * 100));
         }
 
-        LocalDateTime agora = LocalDateTime.now();
-        LocalDateTime umaSemanaAtras = agora.minusWeeks(1);
-        LocalDateTime duasSemanasAtras = agora.minusWeeks(2);
+        LocalDate agora = LocalDate.now();
+        LocalDate umaSemanaAtras = agora.minusWeeks(1);
+        LocalDate duasSemanasAtras = agora.minusWeeks(2);
 
         double crescimento = calcularTaxaCrescimento(
                 duasSemanasAtras, umaSemanaAtras, umaSemanaAtras, agora);

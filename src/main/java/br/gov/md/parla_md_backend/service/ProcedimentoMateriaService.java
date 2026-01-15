@@ -1,5 +1,6 @@
 package br.gov.md.parla_md_backend.service;
 
+import br.gov.md.parla_md_backend.config.WorkflowConfig;
 import br.gov.md.parla_md_backend.domain.Materia;
 import br.gov.md.parla_md_backend.domain.ProcedimentoMateria;
 import br.gov.md.parla_md_backend.exception.ApiExternaException;
@@ -27,8 +28,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 @RequiredArgsConstructor
 public class ProcedimentoMateriaService {
 
-    private static final String PROCEDURE_EXCHANGE = "procedure.exchange";
-    private static final String PROCEDURE_ROUTING_KEY = "procedure.new";
     private static final DateTimeFormatter DATE_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
     private static final DateTimeFormatter DATE_FORMATTER =
@@ -42,9 +41,13 @@ public class ProcedimentoMateriaService {
     private final RabbitMQProducer rabbitMQProducer;
     private final SenadoService senadoService;
 
+    /**
+     * Atualização agendada de todas as matérias.
+     * Executa diariamente às 02:00 AM.
+     */
     @Scheduled(cron = "0 0 2 * * ?")
     @Transactional
-    public void scheduledUpdateAllMatterProcedures() {
+    public void atualizarTodasTramitacoesAgendadas() {
         log.info("Iniciando atualização agendada de procedimentos de matérias às {}",
                 LocalDateTime.now());
 
@@ -62,7 +65,7 @@ public class ProcedimentoMateriaService {
                 try {
                     if (materia.getCodigoMateria() != null) {
                         List<ProcedimentoMateria> procedimentos =
-                                fetchAndSaveProcedures(materia.getCodigoMateria());
+                                buscarESalvarTramitacoes(materia.getCodigoMateria());
 
                         log.debug("Atualizados {} procedimentos para a matéria {}",
                                 procedimentos.size(), materia.getCodigoMateria());
@@ -70,16 +73,18 @@ public class ProcedimentoMateriaService {
                         atualizadas.incrementAndGet();
 
                         if (!procedimentos.isEmpty()) {
-                            ProcedimentoMateria ultimo = procedimentos.get(
-                                    procedimentos.size() - 1);
+                            ProcedimentoMateria ultimo = procedimentos.get(procedimentos.size() - 1);
 
                             materia.setSituacaoAtual(ultimo.getSituacaoDescricao());
                             materia.setDataUltimaAtualizacao(LocalDateTime.now());
                             materiaRepository.save(materia);
                         }
 
-                        rabbitMQProducer.sendMessage("materia.exchange",
-                                "materia.atualizada", materia);
+                        rabbitMQProducer.sendMessage(
+                                WorkflowConfig.ATUALIZACAO_API_EXCHANGE,
+                                WorkflowConfig.ATUALIZACAO_API_ROUTING_KEY,
+                                materia
+                        );
                     }
 
                 } catch (Exception e) {
@@ -97,23 +102,34 @@ public class ProcedimentoMateriaService {
         }
     }
 
-    @RabbitListener(queues = "matter.queue")
+    /**
+     * Processa mensagens de solicitação de atualização vindas da fila.
+     * Escuta a fila definida em WorkflowConfig.ATUALIZACAO_API_QUEUE.
+     */
+    @RabbitListener(queues = WorkflowConfig.ATUALIZACAO_API_QUEUE)
     @Transactional
-    public void processMatterMessage(String message) {
+    public void processarMensagemAtualizacao(String mensagem) {
         try {
-            String codigoStr = message.replaceAll("[^0-9]", "");
+
+            String codigoStr = mensagem.replaceAll("[^0-9]", "");
+
+            if (codigoStr.isEmpty()) {
+                log.warn("Mensagem vazia ou inválida recebida na fila de atualização: {}", mensagem);
+                return;
+            }
+
             Long codigoMateria = Long.parseLong(codigoStr);
 
             materiaRepository.findByCodigoMateria(codigoMateria)
-                    .ifPresent(materia -> fetchAndSaveProcedures(codigoMateria));
+                    .ifPresent(materia -> buscarESalvarTramitacoes(codigoMateria));
 
         } catch (Exception e) {
-            log.error("Erro ao processar mensagem da fila: {}", e.getMessage(), e);
+            log.error("Erro ao processar mensagem da fila de atualização: {}", e.getMessage(), e);
         }
     }
 
     @Transactional
-    public List<ProcedimentoMateria> fetchAndSaveProcedures(Long codigoMateria) {
+    public List<ProcedimentoMateria> buscarESalvarTramitacoes(Long codigoMateria) {
         try {
             log.debug("Buscando procedimentos para matéria: {}", codigoMateria);
 
@@ -123,7 +139,7 @@ public class ProcedimentoMateriaService {
             log.info("Salvos {} procedimentos para matéria {}",
                     procedimentos.size(), codigoMateria);
 
-            procedimentos.forEach(this::publicarProcedimento);
+            procedimentos.forEach(this::publicarTramitacao);
 
             return procedimentos;
 
@@ -140,33 +156,33 @@ public class ProcedimentoMateriaService {
         return procedimentoRepository.findByCodigoMateria(codigoMateria);
     }
 
-    private void publicarProcedimento(ProcedimentoMateria procedimento) {
+    private void publicarTramitacao(ProcedimentoMateria procedimento) {
         try {
             rabbitMQProducer.sendMessage(
-                    PROCEDURE_EXCHANGE,
-                    PROCEDURE_ROUTING_KEY,
+                    WorkflowConfig.TRAMITACAO_EXCHANGE,
+                    WorkflowConfig.TRAMITACAO_ROUTING_KEY,
                     procedimento);
 
-            log.debug("Evento publicado para procedimento da matéria: {}",
+            log.debug("Evento publicado para tramitação da matéria: {}",
                     procedimento.getCodigoMateria());
 
         } catch (Exception e) {
-            log.error("Erro ao publicar evento de procedimento: {}", e.getMessage());
+            log.error("Erro ao publicar evento de tramitação: {}", e.getMessage());
         }
     }
 
-    private LocalDateTime parseDateTime(String dateTimeString) {
-        if (dateTimeString == null || dateTimeString.isEmpty()) {
+    private LocalDateTime parseDataHora(String dataHoraString) {
+        if (dataHoraString == null || dataHoraString.isEmpty()) {
             return null;
         }
 
         try {
-            return LocalDateTime.parse(dateTimeString, DATE_TIME_FORMATTER);
+            return LocalDateTime.parse(dataHoraString, DATE_TIME_FORMATTER);
         } catch (DateTimeParseException e1) {
             try {
-                return LocalDate.parse(dateTimeString, DATE_FORMATTER).atStartOfDay();
+                return LocalDate.parse(dataHoraString, DATE_FORMATTER).atStartOfDay();
             } catch (DateTimeParseException e2) {
-                log.warn("Erro ao parsear data: {}", dateTimeString);
+                log.warn("Erro ao converter data: {}", dataHoraString);
                 return null;
             }
         }

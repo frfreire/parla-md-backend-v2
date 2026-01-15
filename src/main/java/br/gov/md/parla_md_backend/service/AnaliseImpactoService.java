@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -80,11 +81,9 @@ public class AnaliseImpactoService {
 
     @Cacheable(value = "analises-impacto", key = "#itemId + '-' + #areaId")
     public AnaliseImpactoDTO buscarAnalisePorItemEArea(String itemId, String areaId) {
-        ItemLegislativo item = buscarItemLegislativo(itemId);
-        AreaImpacto area = buscarAreaImpacto(areaId);
 
         AnaliseImpacto analise = analiseRepository
-                .findByItemLegislativoAndAreaImpacto(item, area)
+                .findByItemLegislativo_IdAndAreaImpacto_Id(itemId, areaId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException(
                         "Análise não encontrada para item " + itemId + " e área " + areaId));
 
@@ -92,9 +91,8 @@ public class AnaliseImpactoService {
     }
 
     public List<AnaliseImpactoDTO> buscarAnalisesPorItem(String itemId) {
-        ItemLegislativo item = buscarItemLegislativo(itemId);
 
-        return analiseRepository.findByItemLegislativo(item).stream()
+        return analiseRepository.findAllByItemLegislativo_Id(itemId, PageRequest.of(0, 20) ).stream()
                 .map(AnaliseImpactoDTO::from)
                 .collect(Collectors.toList());
     }
@@ -223,7 +221,7 @@ public class AnaliseImpactoService {
         LocalDateTime limite = LocalDateTime.now().minusSeconds(cacheTtlSegundos);
 
         return analiseRepository
-                .findByItemLegislativoAndAreaImpacto(item, area)
+                .findByItemLegislativo_IdAndAreaImpacto_Id(item.getId(), area.getId())
                 .filter(a -> a.getDataAnalise().isAfter(limite))
                 .filter(a -> a.getSucesso() != null && a.getSucesso())
                 .orElse(null);

@@ -234,7 +234,7 @@ public class DadosLegislativosController {
 
         CompletableFuture.runAsync(() -> {
             try {
-                procedimentoMateriaService.scheduledUpdateAllMatterProcedures();
+                procedimentoMateriaService.atualizarTodasTramitacoesAgendadas();
                 updateStatuses.put(updateId, "Concluído");
 
             } catch (Exception e) {

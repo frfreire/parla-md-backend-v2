@@ -23,6 +23,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Year;
 import java.util.List;
@@ -228,7 +229,7 @@ public class MateriaController {
             @RequestParam(defaultValue = "30") int dias) {
 
         log.debug("Buscando matérias dos últimos {} dias", dias);
-        LocalDateTime dataLimite = LocalDateTime.now().minusDays(dias);
+        LocalDate dataLimite = LocalDate.now().minusDays(dias);
         List<MateriaDTO> materias = senadoService.buscarApresentadasApos(dataLimite);
         return ResponseEntity.ok(materias);
     }

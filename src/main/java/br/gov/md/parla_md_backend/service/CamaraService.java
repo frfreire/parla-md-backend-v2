@@ -161,9 +161,9 @@ public class CamaraService {
                 .collect(Collectors.toList());
     }
 
-    public List<ProposicaoDTO> buscarPorAutor(String autorId) {
+    public List<ProposicaoDTO> buscarPorAutor(Long autorId) {
         log.debug("Buscando proposições por autor: {}", autorId);
-        return proposicaoRepository.findByAutorId(autorId).stream()
+        return proposicaoRepository.findByIdDeputadoAutor(autorId).stream()
                 .map(ProposicaoDTO::fromEntity)
                 .collect(Collectors.toList());
     }
@@ -186,7 +186,7 @@ public class CamaraService {
             StatusTriagem status,
             Pageable pageable) {
         log.debug("Buscando proposições por status de triagem: {}", status);
-        return proposicaoRepository.findByTriagemStatus(status, pageable)
+        return proposicaoRepository.findByStatusTriagem(status, pageable)
                 .map(ProposicaoDTO::fromEntity);
     }
 
@@ -239,7 +239,11 @@ public class CamaraService {
     public List<ProcedimentoProposicaoDTO> buscarProcedimentosPorProposicao(String proposicaoId) {
         log.debug("Buscando procedimentos da proposição: {}", proposicaoId);
 
-        List<ProcedimentoProposicao> procedimentos = procedimentoRepository.findByPropositionId(proposicaoId);
+        Proposicao proposicao = proposicaoRepository.findById(proposicaoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Proposição não encontrada com ID: " + proposicaoId));
+
+        List<ProcedimentoProposicao> procedimentos = procedimentoRepository.findByProposicao(proposicao);
 
         return procedimentos.stream()
                 .map(ProcedimentoProposicaoDTO::from)
@@ -254,12 +258,11 @@ public class CamaraService {
         return proposicaoRepository.countBySiglaTipo(siglaTipo);
     }
 
-    public long contarPorStatusTriagem(StatusTriagem status) {
-        return proposicaoRepository.countByTriagemStatus(status);
-    }
+//    public long contarPorStatusTriagem(StatusTriagem status) {
+//        return proposicaoRepository.countByTriagemStatus(status);
+//    }
 
     // ==================== MÉTODOS PRIVADOS ====================
-
     private String construirEndpointProposicoes(Integer ano, Integer itens) {
         return String.format("%sproposicoes?ano=%d&itens=%d&ordem=ASC&ordenarPor=id",
                 camaraApiBaseUrl, ano, itens);

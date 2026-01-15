@@ -3,12 +3,14 @@ package br.gov.md.parla_md_backend.repository;
 import br.gov.md.parla_md_backend.domain.Proposicao;
 import br.gov.md.parla_md_backend.domain.enums.StatusTriagem;
 import br.gov.md.parla_md_backend.domain.enums.StatusTramitacao;
+import br.gov.md.parla_md_backend.domain.enums.TipoProposicao;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -17,7 +19,10 @@ import java.util.Optional;
 public interface IProposicaoRepository extends MongoRepository<Proposicao, String> {
 
     Optional<Proposicao> findByIdCamara(Long idCamara);
-
+    Page<Proposicao> findAllByTipoProposicao(
+            TipoProposicao tipo,
+            Pageable pageable
+    );
     List<Proposicao> findByAno(Integer ano);
     List<Proposicao> findBySiglaTipo(String siglaTipo);
     List<Proposicao> findByTema(String tema);
@@ -27,21 +32,32 @@ public interface IProposicaoRepository extends MongoRepository<Proposicao, Strin
     List<Proposicao> findByRegime(String regime);
     List<Proposicao> findByStatusProposicao(String statusProposicao);
     List<Proposicao> findBySituacaoAtual(String situacaoAtual);
-
+    Optional<Proposicao> findByNumeroAndAno(String numero, Integer ano);
     List<Proposicao> findByIdDeputadoAutor(Long idDeputadoAutor);
     List<Proposicao> findByNomeDeputadoAutor(String nomeDeputadoAutor);
-    List<Proposicao> findByAutorId(String autorId);  // Mantido para compatibilidade
-
-    List<Proposicao> findByTriagemStatus(StatusTriagem status);
-    Page<Proposicao> findByTriagemStatus(StatusTriagem status, Pageable pageable);
+    Page<Proposicao> findAllByNomeDeputadoAutorContainingIgnoreCase(
+            String nome,
+            Pageable pageable
+    );
+    Page<Proposicao> findAllBySituacaoAtual(
+            String situacao,
+            Pageable pageable
+    );
+    Page<Proposicao> findAllByRegime(
+            String regime,
+            Pageable pageable
+    );
+    List<Proposicao> findByDataUltimaAtualizacaoBefore(LocalDate data);
+    List<Proposicao> findByStatusTriagem(StatusTriagem status);
+    Page<Proposicao> findByStatusTriagem(StatusTriagem status, Pageable pageable);
     List<Proposicao> findByStatusTramitacao(StatusTramitacao status);
     List<Proposicao> findByAprovada(boolean aprovada);
 
-    List<Proposicao> findByDataApresentacaoAfter(LocalDateTime data);
-    List<Proposicao> findByDataApresentacaoBefore(LocalDateTime data);
+    List<Proposicao> findByDataApresentacaoAfter(LocalDate data);
+    List<Proposicao> findByDataApresentacaoBefore(LocalDate data);
     List<Proposicao> findByDataApresentacaoBetween(
-            LocalDateTime dataInicio,
-            LocalDateTime dataFim
+            LocalDate dataInicio,
+            LocalDate dataFim
     );
     List<Proposicao> findByAnoOrderByDataApresentacaoDesc(Integer ano);
 
@@ -55,7 +71,7 @@ public interface IProposicaoRepository extends MongoRepository<Proposicao, Strin
     long countByAno(Integer ano);
     long countBySiglaTipo(String siglaTipo);
     long countByTema(String tema);
-    long countByTriagemStatus(StatusTriagem status);
+//    long countByTriagemStatus(StatusTriagem status);
     long countByStatusTramitacao(StatusTramitacao status);
     long countByAnoAndSiglaTipo(Integer ano, String siglaTipo);
     long countByAprovada(boolean aprovada);
@@ -98,7 +114,18 @@ public interface IProposicaoRepository extends MongoRepository<Proposicao, Strin
             Double probabilidadeMinima,
             Double probabilidadeMaxima
     );
-
+    @Query("{ " +
+            "'tipoProposicao': ?0, " +
+            "'situacaoAtual': ?1, " +
+            "'dataApresentacao': { $gte: ?2, $lte: ?3 } " +
+            "}")
+    Page<Proposicao> findAllByTipoAndSituacaoAndPeriodo(
+            TipoProposicao tipo,
+            String situacao,
+            LocalDate inicio,
+            LocalDate fim,
+            Pageable pageable
+    );
     @Query("{ 'ano': ?0, 'statusTriagem': ?1, 'tema': ?2 }")
     Page<Proposicao> buscarPorAnoStatusETema(
             Integer ano,
@@ -109,4 +136,11 @@ public interface IProposicaoRepository extends MongoRepository<Proposicao, Strin
 
     boolean existsByIdCamara(Long idCamara);
     boolean existsByAnoAndNumero(Integer ano, Integer numero);
+    long countByTipoProposicao(TipoProposicao tipo);
+    long countBySituacaoAtual(String situacao);
+
+    long countByDataApresentacaoBetween(
+            LocalDate dataInicio,
+            LocalDate dataFim
+    );
 }

@@ -1,5 +1,6 @@
 package br.gov.md.parla_md_backend.repository;
 
+import br.gov.md.parla_md_backend.domain.AnaliseImpacto;
 import br.gov.md.parla_md_backend.domain.AreaImpacto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,23 +14,23 @@ import java.util.Optional;
 @Repository
 public interface IAreaImpactoRepository extends MongoRepository<AreaImpacto, String> {
 
-    Optional<AreaImpacto> findByNome(String nome);
-
     List<AreaImpacto> findByAtiva(Boolean ativa);
-
-    Page<AreaImpacto> findByAtiva(Boolean ativa, Pageable pageable);
-
-    List<AreaImpacto> findByCategoria(String categoria);
-
-    List<AreaImpacto> findByOrderByOrdemAsc();
-
-    @Query("{ 'keywords': { $in: ?0 } }")
-    List<AreaImpacto> buscarPorKeywords(List<String> keywords);
-
-    @Query("{ 'nome': { $regex: ?0, $options: 'i' } }")
-    List<AreaImpacto> buscarPorNomeContendo(String texto);
 
     boolean existsByNome(String nome);
 
-    long countByAtiva(Boolean ativa);
+    Page<AnaliseImpacto> findAllByCategoria(String categoria, Pageable pageable);
+
+    Page<AreaImpacto> findAllByAtivaTrue(Pageable pageable);
+
+    Page<AreaImpacto> findAllByAtivaFalse(Pageable pageable);
+
+    List<AreaImpacto> findAllByAtivaOrderByOrdemAsc(Boolean ativa);
+
+    @Query("{ 'keywords': { $in: ?0 } }")
+    List<AreaImpacto> findByKeywordsContaining(List<String> keywords);
+
+    @Query("{ 'gruposAfetados': { $in: ?0 } }")
+    List<AreaImpacto> findByGruposAfetadosContaining(List<String> grupos);
+
+
 }

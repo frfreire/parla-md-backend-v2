@@ -1,28 +1,28 @@
 package br.gov.md.parla_md_backend.service;
 
 import br.gov.md.parla_md_backend.config.OllamaConfig;
+import br.gov.md.parla_md_backend.domain.InteracaoLlama;
 import br.gov.md.parla_md_backend.domain.dto.RequisicaoLlamaDTO;
 import br.gov.md.parla_md_backend.domain.dto.RespostaLlamaDTO;
-import br.gov.md.parla_md_backend.domain.InteracaoLlama;
 import br.gov.md.parla_md_backend.exception.IAException;
 import br.gov.md.parla_md_backend.exception.LlamaIndisponivelException;
-import br.gov.md.parla_md_backend.exception.LlamaTimeoutException;
 import br.gov.md.parla_md_backend.repository.IInteracaoLlamaRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.MeterRegistry;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.http.*;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -30,11 +30,9 @@ import java.util.List;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class LlamaService {
 
-    private final RestTemplate restTemplate;
-    private final OllamaConfig ollamaConfig;
+    private final RestClient restClient;
     private final ObjectMapper objectMapper;
     private final IInteracaoLlamaRepository interacaoRepository;
     private final MeterRegistry meterRegistry;
@@ -47,6 +45,23 @@ public class LlamaService {
 
     @Value("${cache.llm.ttl:3600}")
     private int cacheTtlSegundos;
+
+    // Injeção via construtor com configuração do RestClient
+    public LlamaService(RestClient.Builder restClientBuilder,
+                        OllamaConfig ollamaConfig,
+                        ObjectMapper objectMapper,
+                        IInteracaoLlamaRepository interacaoRepository,
+                        MeterRegistry meterRegistry) {
+
+        this.restClient = restClientBuilder
+                .baseUrl(ollamaConfig.getOllamaUrl())
+                .defaultHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                .build();
+
+        this.objectMapper = objectMapper;
+        this.interacaoRepository = interacaoRepository;
+        this.meterRegistry = meterRegistry;
+    }
 
     public RespostaLlamaDTO enviarRequisicao(String promptUsuario) {
         return enviarRequisicao(promptUsuario, null, false);
@@ -107,33 +122,41 @@ public class LlamaService {
         }
     }
 
+    // Sobrecarga para tipos simples (compatibilidade)
     public <T> T extrairJson(RespostaLlamaDTO resposta, Class<T> classe) {
+        return processarExtracaoJson(resposta, conteudo -> objectMapper.readValue(conteudo, classe));
+    }
+
+    // Nova sobrecarga segura para Generics (List, Map, etc)
+    public <T> T extrairJson(RespostaLlamaDTO resposta, TypeReference<T> typeReference) {
+        return processarExtracaoJson(resposta, conteudo -> objectMapper.readValue(conteudo, typeReference));
+    }
+
+    @FunctionalInterface
+    private interface JsonParser<T> {
+        T parse(String content) throws JsonProcessingException;
+    }
+
+    private <T> T processarExtracaoJson(RespostaLlamaDTO resposta, JsonParser<T> parser) {
         try {
             String conteudo = extrairConteudo(resposta);
             String conteudoLimpo = limparMarkdown(conteudo);
-
-            return objectMapper.readValue(conteudoLimpo, classe);
-
+            return parser.parse(conteudoLimpo);
         } catch (JsonProcessingException e) {
             log.error("Erro ao parsear JSON: {}", resposta.getMessage().getContent(), e);
-            throw IAException.respostaInvalida("JSON malformado");
+            throw IAException.respostaInvalida("JSON malformado ou incompatível com o tipo esperado");
         }
     }
 
     @Cacheable(value = "llama-disponibilidade", key = "'status'")
     public boolean verificarDisponibilidade() {
         try {
-            String url = ollamaConfig.getOllamaUrl() + "/api/tags";
-            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
-
-            boolean disponivel = response.getStatusCode().is2xxSuccessful();
-
-            registrarMetrica(
-                    disponivel ? "llama.disponibilidade.online" : "llama.disponibilidade.offline",
-                    1
-            );
-
-            return disponivel;
+            return restClient.get()
+                    .uri("/api/tags")
+                    .retrieve()
+                    .toBodilessEntity()
+                    .getStatusCode()
+                    .is2xxSuccessful();
 
         } catch (Exception e) {
             log.warn("Ollama indisponível: {}", e.getMessage());
@@ -166,25 +189,18 @@ public class LlamaService {
         if (prompt == null || prompt.isBlank()) {
             throw new IllegalArgumentException("Prompt não pode ser vazio");
         }
-
         if (prompt.length() > 100000) {
             throw new IllegalArgumentException("Prompt excede limite de 100.000 caracteres");
         }
     }
 
     private RespostaLlamaDTO executarRequisicao(RequisicaoLlamaDTO requisicao) {
-        String url = ollamaConfig.getOllamaUrl() + "/api/chat";
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        HttpEntity<RequisicaoLlamaDTO> entity = new HttpEntity<>(requisicao, headers);
-
-        ResponseEntity<RespostaLlamaDTO> response = restTemplate.postForEntity(
-                url,
-                entity,
-                RespostaLlamaDTO.class
-        );
+        // A URL base já está configurada no RestClient
+        ResponseEntity<RespostaLlamaDTO> response = restClient.post()
+                .uri("/api/chat")
+                .body(requisicao)
+                .retrieve()
+                .toEntity(RespostaLlamaDTO.class);
 
         return response.getBody();
     }
@@ -193,17 +209,12 @@ public class LlamaService {
         if (resposta == null || resposta.getDone() == null || !resposta.getDone()) {
             throw IAException.respostaIncompleta();
         }
-
         if (resposta.getMessage() == null || resposta.getMessage().getContent() == null) {
             throw IAException.respostaInvalida("Conteúdo vazio");
         }
     }
 
-    private RequisicaoLlamaDTO construirRequisicao(
-            String promptUsuario,
-            String promptSistema,
-            boolean respostaJson) {
-
+    private RequisicaoLlamaDTO construirRequisicao(String promptUsuario, String promptSistema, boolean respostaJson) {
         RequisicaoLlamaDTO.RequisicaoLlamaDTOBuilder builder = RequisicaoLlamaDTO.builder()
                 .model(modeloPadrao)
                 .stream(false)
@@ -227,18 +238,12 @@ public class LlamaService {
                 .build();
     }
 
-    private List<RequisicaoLlamaDTO.Mensagem> construirMensagens(
-            String promptUsuario,
-            String promptSistema) {
-
+    private List<RequisicaoLlamaDTO.Mensagem> construirMensagens(String promptUsuario, String promptSistema) {
         List<RequisicaoLlamaDTO.Mensagem> mensagens = new ArrayList<>();
-
         if (promptSistema != null && !promptSistema.isBlank()) {
             mensagens.add(construirMensagem("system", promptSistema));
         }
-
         mensagens.add(construirMensagem("user", promptUsuario));
-
         return mensagens;
     }
 
@@ -260,11 +265,7 @@ public class LlamaService {
                 .trim();
     }
 
-    private void registrarSucesso(
-            RequisicaoLlamaDTO requisicao,
-            RespostaLlamaDTO resposta,
-            long duracaoMs) {
-
+    private void registrarSucesso(RequisicaoLlamaDTO requisicao, RespostaLlamaDTO resposta, long duracaoMs) {
         InteracaoLlama interacao = InteracaoLlama.builder()
                 .modelo(requisicao.getModel())
                 .promptUsuario(extrairPromptUsuario(requisicao))
@@ -273,10 +274,8 @@ public class LlamaService {
                 .respostaJson(requisicao.getFormat() != null)
                 .sucesso(true)
                 .dataHoraRequisicao(LocalDateTime.now())
-                .duracaoTotalMs(resposta.getTotalDuration() != null ?
-                        resposta.getTotalDuration() / 1_000_000 : duracaoMs)
-                .duracaoCarregamentoMs(resposta.getLoadDuration() != null ?
-                        resposta.getLoadDuration() / 1_000_000 : null)
+                .duracaoTotalMs(resposta.getTotalDuration() != null ? resposta.getTotalDuration() / 1_000_000 : duracaoMs)
+                .duracaoCarregamentoMs(resposta.getLoadDuration() != null ? resposta.getLoadDuration() / 1_000_000 : null)
                 .tokensPrompt(resposta.getPromptEvalCount())
                 .tokensResposta(resposta.getEvalCount())
                 .temperature(requisicao.getOptions().getTemperature())
@@ -286,12 +285,7 @@ public class LlamaService {
         interacaoRepository.save(interacao);
     }
 
-    private void registrarFalha(
-            String promptUsuario,
-            String promptSistema,
-            String mensagemErro,
-            long duracaoMs) {
-
+    private void registrarFalha(String promptUsuario, String promptSistema, String mensagemErro, long duracaoMs) {
         InteracaoLlama interacao = InteracaoLlama.builder()
                 .modelo(modeloPadrao)
                 .promptUsuario(promptUsuario)
@@ -308,6 +302,7 @@ public class LlamaService {
     }
 
     private void registrarMetrica(String nomeMetrica, long valor) {
+        // Uso direto da API do Micrometer, evitando métodos depreciados se houver
         meterRegistry.counter(nomeMetrica).increment(valor);
     }
 

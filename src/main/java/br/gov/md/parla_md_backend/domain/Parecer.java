@@ -46,7 +46,7 @@ public class Parecer {
     private RecomendacaoParecer recomendacao;
     private String justificativaRecomendacao;
 
-    private StatusParecer statusParecer;
+    private StatusParecer status;
 
     @Builder.Default
     private List<String> fundamentacaoLegal = new ArrayList<>();

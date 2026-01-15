@@ -102,18 +102,15 @@ public class ProposicaoService {
             throw new ValidacaoException("Data inicial não pode ser posterior à data final");
         }
 
-        LocalDateTime inicioDateTime = inicio.atStartOfDay();
-        LocalDateTime fimDateTime = fim.atTime(23, 59, 59);
-
-        return proposicaoRepository.findByDataApresentacaoBetween(inicioDateTime, fimDateTime);
+        return proposicaoRepository.findByDataApresentacaoBetween(inicio, fim);
     }
 
     @Transactional(readOnly = true)
-    public List<Proposicao> buscarPorAutor(String autorId) {
-        if (autorId == null || autorId.trim().isEmpty()) {
+    public List<Proposicao> buscarPorAutor(Long autorId) {
+        if (autorId == null || autorId == 0) {
             throw new ValidacaoException("ID do autor é obrigatório");
         }
-        return proposicaoRepository.findByAutorId(autorId);
+        return proposicaoRepository.findByIdDeputadoAutor(autorId);
     }
 
     @Transactional(readOnly = true)
@@ -125,7 +122,7 @@ public class ProposicaoService {
             throw new ValidacaoException("Status de triagem é obrigatório");
         }
 
-        return proposicaoRepository.findByTriagemStatus(status, pageable);
+        return proposicaoRepository.findByStatusTriagem(status, pageable);
     }
 
     @Transactional
@@ -262,7 +259,7 @@ public class ProposicaoService {
 
     @Transactional(readOnly = true)
     public long contarPorStatusTriagem(StatusTriagem status) {
-        return proposicaoRepository.findByTriagemStatus(status, Pageable.unpaged())
+        return proposicaoRepository.findByStatusTriagem(status, Pageable.unpaged())
                 .getTotalElements();
     }
 
