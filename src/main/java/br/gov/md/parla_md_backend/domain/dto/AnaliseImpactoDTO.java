@@ -1,76 +1,62 @@
 package br.gov.md.parla_md_backend.domain.dto;
 
 import br.gov.md.parla_md_backend.domain.AnaliseImpacto;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class AnaliseImpactoDTO {
+public record AnaliseImpactoDTO(
+        String id,
+        String itemLegislativoId,
+        String itemLegislativoTipo,
+        String itemLegislativoEmenta,
+        String areaImpactoId,
+        String areaImpactoNome,
+        String nivelImpacto,
+        String tipoImpacto,
+        Double percentualImpacto,
+        String analiseDetalhada,
+        List<String> consequencias,
+        List<String> gruposAfetados,
+        List<String> riscos,
+        List<String> oportunidades,
+        String recomendacoes,
 
-        private String id;
+        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+        LocalDateTime dataAnalise,
 
-        private String itemLegislativoId;
-
-        private String areaImpactoId;
-
-        private String areaImpactoNome;
-
-        private String nivelImpacto;
-
-        private String tipoImpacto;
-
-        private Double percentualImpacto;
-
-        private String analiseDetalhada;
-
-        private List<String> consequencias;
-
-        private List<String> gruposAfetados;
-
-        private List<String> riscos;
-
-        private List<String> oportunidades;
-
-        private String recomendacoes;
-
-        private LocalDateTime dataAnalise;
-
-        private String modeloVersao;
-
-        private Long tempoProcessamentoMs;
-
-        private Boolean sucesso;
-
+        String modeloVersao,
+        Long tempoProcessamentoMs,
+        Boolean sucesso,
+        String mensagemErro
+) {
         public static AnaliseImpactoDTO from(AnaliseImpacto analise) {
-                return AnaliseImpactoDTO.builder()
-                        .id(analise.getId())
-                        .itemLegislativoId(analise.getItemLegislativo() != null ?
-                                analise.getItemLegislativo().getId() : null)
-                        .areaImpactoId(analise.getAreaImpacto() != null ?
-                                analise.getAreaImpacto().getId() : null)
-                        .areaImpactoNome(analise.getAreaImpacto() != null ?
-                                analise.getAreaImpacto().getNome() : null)
-                        .nivelImpacto(analise.getNivelImpacto())
-                        .tipoImpacto(analise.getTipoImpacto())
-                        .percentualImpacto(analise.getPercentualImpacto())
-                        .analiseDetalhada(analise.getAnaliseDetalhada())
-                        .consequencias(analise.getConsequencias())
-                        .gruposAfetados(analise.getGruposAfetados())
-                        .riscos(analise.getRiscos())
-                        .oportunidades(analise.getOportunidades())
-                        .recomendacoes(analise.getRecomendacoes())
-                        .dataAnalise(analise.getDataAnalise())
-                        .modeloVersao(analise.getModeloVersao())
-                        .tempoProcessamentoMs(analise.getTempoProcessamentoMs())
-                        .sucesso(analise.getSucesso())
-                        .build();
+                if (analise == null) {
+                        return null;
+                }
+
+                return new AnaliseImpactoDTO(
+                        analise.getId(),
+                        analise.getItemLegislativo() != null ? analise.getItemLegislativo().getId() : null,
+                        analise.getItemLegislativo() != null ? analise.getItemLegislativo().getTipo() : null,
+                        analise.getItemLegislativo() != null ? analise.getItemLegislativo().getEmenta() : null,
+                        analise.getAreaImpacto() != null ? analise.getAreaImpacto().getId() : null,
+                        analise.getAreaImpacto() != null ? analise.getAreaImpacto().getNome() : null,
+                        analise.getNivelImpacto(),
+                        analise.getTipoImpacto(),
+                        analise.getPercentualImpacto(),
+                        analise.getAnaliseDetalhada(),
+                        analise.getConsequencias(),
+                        analise.getGruposAfetados(),
+                        analise.getRiscos(),
+                        analise.getOportunidades(),
+                        analise.getRecomendacoes(),
+                        analise.getDataAnalise(),
+                        analise.getModeloVersao(),
+                        analise.getTempoProcessamentoMs(),
+                        analise.getSucesso(),
+                        analise.getMensagemErro()
+                );
         }
 }

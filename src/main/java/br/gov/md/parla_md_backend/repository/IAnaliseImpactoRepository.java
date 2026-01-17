@@ -1,8 +1,6 @@
 package br.gov.md.parla_md_backend.repository;
 
-import br.gov.md.parla_md_backend.domain.AreaImpacto;
 import br.gov.md.parla_md_backend.domain.AnaliseImpacto;
-import br.gov.md.parla_md_backend.domain.ItemLegislativo;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
@@ -13,38 +11,29 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Repository para operações de persistência de Análises de Impacto.
+ *
+ * Análises de Impacto avaliam como proposições e matérias legislativas
+ * afetam diferentes áreas estratégicas do Ministério da Defesa.
+ */
 @Repository
 public interface IAnaliseImpactoRepository extends MongoRepository<AnaliseImpacto, String> {
-
 
     Optional<AnaliseImpacto> findByItemLegislativo_IdAndAreaImpacto_Id(
             String itemLegislativoId,
             String areaImpactoId
     );
 
-    List<AnaliseImpacto> findByDataAnaliseAfter(LocalDateTime data);
-
-    Page<AnaliseImpacto> findByDataAnaliseAfter(LocalDateTime data, Pageable pageable);
-
-    @Query("{ 'percentualImpacto': { $gte: ?0 } }")
-    List<AnaliseImpacto> buscarComPercentualMinimo(Double percentualMinimo);
-
-    @Query("{ 'dataExpiracao': { $lt: ?0 } }")
-    List<AnaliseImpacto> buscarExpiradas(LocalDateTime agora);
-
     Page<AnaliseImpacto> findAllByItemLegislativo_Id(String itemLegislativoId, Pageable pageable);
 
     Page<AnaliseImpacto> findAllByAreaImpacto_Id(String areaImpactoId, Pageable pageable);
 
-    Page<AnaliseImpacto> findAllByNivelImpacto(String nivelImpacto, Pageable pageable);
+    List<AnaliseImpacto> findByDataAnaliseAfter(LocalDateTime data);
 
-    Page<AnaliseImpacto> findAllByTipoImpacto(String tipoImpacto, Pageable pageable);
+    Page<AnaliseImpacto> findByDataAnaliseAfter(LocalDateTime data, Pageable pageable);
 
-    Page<AnaliseImpacto> findAllByNivelImpactoAndTipoImpacto(
-            String nivelImpacto,
-            String tipoImpacto,
-            Pageable pageable
-    );
+    List<AnaliseImpacto> findByDataAnaliseBefore(LocalDateTime data);
 
     Page<AnaliseImpacto> findAllByDataAnaliseBetween(
             LocalDateTime inicio,
@@ -52,11 +41,36 @@ public interface IAnaliseImpactoRepository extends MongoRepository<AnaliseImpact
             Pageable pageable
     );
 
-    Page<AnaliseImpacto> findAllBySucessoTrue(Pageable pageable);
+    Page<AnaliseImpacto> findAllByNivelImpacto(String nivelImpacto, Pageable pageable);
 
-    Page<AnaliseImpacto> findAllBySucessoFalse(Pageable pageable);
+    @Query("{ 'nivelImpacto': 'ALTO' }")
+    Page<AnaliseImpacto> findAllByNivelImpactoAlto(Pageable pageable);
 
-    Page<AnaliseImpacto> findAllByModeloVersao(String modeloVersao, Pageable pageable);
+    @Query("{ 'nivelImpacto': 'MEDIO' }")
+    Page<AnaliseImpacto> findAllByNivelImpactoMedio(Pageable pageable);
+
+    @Query("{ 'nivelImpacto': 'BAIXO' }")
+    Page<AnaliseImpacto> findAllByNivelImpactoBaixo(Pageable pageable);
+
+    Page<AnaliseImpacto> findAllByTipoImpacto(String tipoImpacto, Pageable pageable);
+
+    @Query("{ 'tipoImpacto': 'NEGATIVO' }")
+    Page<AnaliseImpacto> findAllByTipoImpactoNegativo(Pageable pageable);
+
+    @Query("{ 'tipoImpacto': 'POSITIVO' }")
+    Page<AnaliseImpacto> findAllByTipoImpactoPositivo(Pageable pageable);
+
+    Page<AnaliseImpacto> findAllByNivelImpactoAndTipoImpacto(
+            String nivelImpacto,
+            String tipoImpacto,
+            Pageable pageable
+    );
+
+    @Query("{ 'nivelImpacto': 'ALTO', 'tipoImpacto': 'NEGATIVO' }")
+    Page<AnaliseImpacto> findAllByAltoImpactoNegativo(Pageable pageable);
+
+    @Query("{ 'percentualImpacto': { $gte: ?0 } }")
+    List<AnaliseImpacto> findByPercentualImpactoGreaterThanEqual(Double percentualMinimo);
 
     @Query("{ 'percentualImpacto': { $gte: ?0, $lte: ?1 } }")
     Page<AnaliseImpacto> findAllByPercentualImpactoBetween(
@@ -65,13 +79,59 @@ public interface IAnaliseImpactoRepository extends MongoRepository<AnaliseImpact
             Pageable pageable
     );
 
+    Page<AnaliseImpacto> findAllBySucessoTrue(Pageable pageable);
+
+    Page<AnaliseImpacto> findAllBySucessoFalse(Pageable pageable);
+
+    Page<AnaliseImpacto> findAllByAreaImpacto_IdAndSucessoTrue(
+            String areaImpactoId,
+            Pageable pageable
+    );
+
+    Page<AnaliseImpacto> findAllByModeloVersao(String modeloVersao, Pageable pageable);
+
     @Query("{ 'dataExpiracao': { $lt: ?0 } }")
-    List<AnaliseImpacto> findAllExpiradas(LocalDateTime dataAtual);
+    List<AnaliseImpacto> findByDataExpiracaoBefore(LocalDateTime data);
 
     void deleteByDataExpiracaoBefore(LocalDateTime data);
 
     long countByNivelImpacto(String nivelImpacto);
+
     long countByTipoImpacto(String tipoImpacto);
+
     long countBySucessoTrue();
+
     long countBySucessoFalse();
+
+    long countByAreaImpacto_Id(String areaImpactoId);
+
+    long countByItemLegislativo_Id(String itemLegislativoId);
+
+    long countByNivelImpactoAndTipoImpacto(String nivelImpacto, String tipoImpacto);
+
+    @Query("{ 'dataAnalise': { $gte: ?0 }, 'sucesso': true }")
+    Page<AnaliseImpacto> findAnalisesBemSucedsRecentes(LocalDateTime dataLimite, Pageable pageable);
+
+    @Query("{ 'dataAnalise': { $gte: ?0 }, 'nivelImpacto': 'ALTO', 'sucesso': true }")
+    Page<AnaliseImpacto> findAnaliseAltoImpactoRecentes(LocalDateTime dataLimite, Pageable pageable);
+
+    @Query("{ 'nivelImpacto': 'ALTO', 'tipoImpacto': 'NEGATIVO', 'sucesso': true }")
+    Page<AnaliseImpacto> findAnalisesCriticas(Pageable pageable);
+
+    @Query("{ 'areaImpacto.$id': ?0, 'dataAnalise': { $gte: ?1, $lte: ?2 } }")
+    List<AnaliseImpacto> findByAreaNoPeriodo(
+            String areaImpactoId,
+            LocalDateTime inicio,
+            LocalDateTime fim
+    );
+
+    boolean existsByItemLegislativo_IdAndAreaImpacto_Id(
+            String itemLegislativoId,
+            String areaImpactoId
+    );
+
+    boolean existsByItemLegislativo_IdAndAreaImpacto_IdAndSucessoTrue(
+            String itemLegislativoId,
+            String areaImpactoId
+    );
 }
