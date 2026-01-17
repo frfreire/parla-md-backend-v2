@@ -1,7 +1,7 @@
 forças armadas
 exército
 marinha
-aeronáutica
+força aérea
 fab
 força terrestre
 militar
@@ -18,3 +18,5 @@ ministério da defesa
 guerra
 conflito armado
 operações militares
+cibernética
+nuclear

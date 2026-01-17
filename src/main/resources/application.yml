@@ -30,8 +30,10 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/parlamd}
-          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8080/realms/parlamd/protocol/openid-connect/certs}
+          # O valor padrão é localhost:8180 para desenvolvimento local sem Docker
+          # Em Docker, as variáveis de ambiente do docker-compose sobrescrevem isso
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/parlamd}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/parlamd/protocol/openid-connect/certs}
 
   # Configuração de Cache
   cache:
@@ -39,22 +41,58 @@ spring:
     caffeine:
       spec: maximumSize=500,expireAfterWrite=10m
 
-# Configuração do RabbitMQ Exchanges
+# Configurações de logging (Defaults, sobrescritos pelo Docker)
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:INFO}
+    br.gov.md.parla_md_backend: ${LOG_LEVEL_BR_GOV_MD_PARLA_MD_BACKEND:DEBUG}
+    org.springframework.security: ${LOG_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY:DEBUG}
+    org.springframework.web: ${LOG_LEVEL_WEB:INFO}
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# (Mantenha o restante do arquivo application.yml original inalterado daqui para baixo, ex: rabbitmq, server, app, ollama, etc.)
 rabbitmq:
   exchanges:
-    model-training: ${RABBITMQ_EXCHANGE_MODEL_TRAINING:model-training-exchange}
-    notifications: ${RABBITMQ_EXCHANGE_NOTIFICATIONS:notifications-exchange}
-    analysis: ${RABBITMQ_EXCHANGE_ANALYSIS:analysis-exchange}
-  queues:
-    model-training: ${RABBITMQ_QUEUE_MODEL_TRAINING:model-training-queue}
-    notifications: ${RABBITMQ_QUEUE_NOTIFICATIONS:notifications-queue}
-    analysis: ${RABBITMQ_QUEUE_ANALYSIS:analysis-queue}
-  routing-keys:
-    model-training: ${RABBITMQ_ROUTING_KEY_MODEL_TRAINING:model.training}
-    notifications: ${RABBITMQ_ROUTING_KEY_NOTIFICATIONS:notifications}
-    analysis: ${RABBITMQ_ROUTING_KEY_ANALYSIS:analysis}
+    tramitacao: ${RABBITMQ_EXCHANGE_TRAMITACAO:parlamd.tramitacao.exchange}
+    notificacao: ${RABBITMQ_EXCHANGE_NOTIFICACAO:parlamd.notificacao.exchange}
+    analise-llm: ${RABBITMQ_EXCHANGE_ANALISE_LLM:parlamd.analise.llm.exchange}
+    atualizacao-api: ${RABBITMQ_EXCHANGE_ATUALIZACAO_API:parlamd.atualizacao.api.exchange}
+    votacao: ${RABBITMQ_EXCHANGE_VOTACAO:parlamd.votacao.exchange}
 
-# Configuração do servidor
+  queues:
+    tramitacao: ${RABBITMQ_QUEUE_TRAMITACAO:parlamd.tramitacao.queue}
+    tramitacao-dlq: ${RABBITMQ_QUEUE_TRAMITACAO_DLQ:parlamd.tramitacao.queue.dlq}
+    notificacao: ${RABBITMQ_QUEUE_NOTIFICACAO:parlamd.notificacao.queue}
+    notificacao-dlq: ${RABBITMQ_QUEUE_NOTIFICACAO_DLQ:parlamd.notificacao.queue.dlq}
+    analise-llm: ${RABBITMQ_QUEUE_ANALISE_LLM:parlamd.analise.llm.queue}
+    analise-llm-dlq: ${RABBITMQ_QUEUE_ANALISE_LLM_DLQ:parlamd.analise.llm.queue.dlq}
+    atualizacao-api: ${RABBITMQ_QUEUE_ATUALIZACAO_API:parlamd.atualizacao.api.queue}
+    atualizacao-api-dlq: ${RABBITMQ_QUEUE_ATUALIZACAO_API_DLQ:parlamd.atualizacao.api.queue.dlq}
+    votacao: ${RABBITMQ_QUEUE_VOTACAO:parlamd.votacao.queue}
+    votacao-dlq: ${RABBITMQ_QUEUE_VOTACAO_DLQ:parlamd.votacao.queue.dlq}
+
+  routing-keys:
+    tramitacao-processar: ${RABBITMQ_ROUTING_KEY_TRAMITACAO:tramitacao.processar}
+    notificacao-enviar: ${RABBITMQ_ROUTING_KEY_NOTIFICACAO:notificacao.enviar}
+    analise-llm-processar: ${RABBITMQ_ROUTING_KEY_ANALISE_LLM:analise.llm.processar}
+    atualizacao-api: ${RABBITMQ_ROUTING_KEY_ATUALIZACAO_API:api.atualizar}
+    votacao-processar: ${RABBITMQ_ROUTING_KEY_VOTACAO_PROCESSAR:votacao.processar}
+    votacao-concluida: ${RABBITMQ_ROUTING_KEY_VOTACAO_CONCLUIDA:votacao.concluida}
+    voto-registrado: ${RABBITMQ_ROUTING_KEY_VOTO_REGISTRADO:voto.registrado}
+
+  dlq:
+    suffix: ${RABBITMQ_DLQ_SUFFIX:.dlq}
+    exchange-suffix: ${RABBITMQ_DLX_SUFFIX:.dlx}
+
+  ttl:
+    tramitacao: ${RABBITMQ_TTL_TRAMITACAO:3600000}     # 1 hora
+    notificacao: ${RABBITMQ_TTL_NOTIFICACAO:7200000}   # 2 horas
+    analise-llm: ${RABBITMQ_TTL_ANALISE_LLM:1800000}   # 30 minutos
+    atualizacao-api: ${RABBITMQ_TTL_ATUALIZACAO_API:3600000}  # 1 hora
+    votacao: ${RABBITMQ_TTL_VOTACAO:600000}            # 10 minutos
+
 server:
   port: ${SERVER_PORT:8081}
   forward-headers-strategy: native
@@ -64,18 +102,15 @@ server:
     enabled: true
     mime-types: application/json,application/xml,text/html,text/xml,text/plain
 
-# Configuração do Keycloak - SIMPLIFICADO (usa variáveis de ambiente)
 keycloak:
   realm: ${KEYCLOAK_REALM:parlamd}
-  auth-server-url: ${KEYCLOAK_AUTH_SERVER_URL:http://localhost:8080}
+  auth-server-url: ${KEYCLOAK_AUTH_SERVER_URL:http://localhost:8180}
   ssl-required: external
-  client-id: ${KEYCLOAK_CLIENT_ID:parlamd-backend}
+  client-id: ${KEYCLOAK_CLIENT_ID:parla-md-client}
   client-secret: ${KEYCLOAK_CLIENT_SECRET}
   verify-token-audience: true
 
-# Configurações específicas da aplicação
 app:
-  # Configuração de CORS
   cors:
     allowed-origins:
       - ${FRONTEND_URL:http://localhost:4200}
@@ -85,8 +120,6 @@ app:
     allowed-headers: "*"
     allow-credentials: true
     max-age: 3600
-
-  # Configuração de Segurança
   security:
     oauth2:
       enabled: ${OAUTH2_ENABLED:true}
@@ -109,7 +142,6 @@ cache:
     ttl: 3600
     max-entries: 1000
 
-# Configuração do OpenAPI/Swagger
 springdoc:
   api-docs:
     path: /v3/api-docs
@@ -132,27 +164,6 @@ springdoc:
   default-consumes-media-type: application/json
   paths-to-match: /api/**
 
-# Configuração de Logging
-logging:
-  level:
-    root: ${LOG_LEVEL_ROOT:INFO}
-    br.gov.md.parla_md_backend: ${LOG_LEVEL_APP:INFO}
-    org.springframework.security: ${LOG_LEVEL_SECURITY:INFO}
-    org.springframework.web: ${LOG_LEVEL_WEB:INFO}
-    org.springframework.amqp: ${LOG_LEVEL_AMQP:INFO}
-    org.springframework.data.mongodb: ${LOG_LEVEL_MONGODB:INFO}
-    org.mongodb.driver: ${LOG_LEVEL_MONGODB_DRIVER:WARN}
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-  file:
-    name: logs/parlamd-backend.log
-  logback:
-    rollingpolicy:
-      max-file-size: 100MB
-      max-history: 30
-
-# Configuração do Actuator
 management:
   endpoints:
     web:
@@ -180,7 +191,6 @@ management:
       export:
         enabled: true
 
-# Configurações de APIs Externas
 camara:
   api:
     base-url: ${CAMARA_API_URL:https://dadosabertos.camara.leg.br/api/v2/}
@@ -195,237 +205,565 @@ senado:
     rate-limit:
       requests-per-second: 10
 
-# Configuração de arquivos de busca
 search:
   terms:
     file: classpath:search_terms.txt
-
----
-# Profile para desenvolvimento SEM autenticacao
-spring:
-  config:
-    activate:
-      on-profile: no-auth
-
-  data:
-    mongodb:
-      uri: mongodb://localhost:27017/parlamd_dev
-
-  rabbitmq:
-    host: localhost
-    port: 5672
-    username: guest
-    password: guest
-
-rabbitmq:
-  exchanges:
-    model-training: model-training-exchange
-    notifications: notifications-exchange
-    analysis: analysis-exchange
-  queues:
-    model-training: model-training-queue
-    notifications: notifications-queue
-    analysis: analysis-queue
-  routing-keys:
-    model-training: model.training
-    notifications: notifications
-    analysis: analysis
-
-app:
-  security:
-    oauth2:
-      enabled: false
-    token-validation:
-      enabled: false
-    rate-limiting:
-      enabled: false
-
-logging:
-  level:
-    br.gov.md.parla_md_backend: DEBUG
-    org.springframework.security: DEBUG
-    org.springframework.web: DEBUG
-
----
-# Profile de Desenvolvimento
-spring:
-  config:
-    activate:
-      on-profile: dev
-
-  data:
-    mongodb:
-      uri: mongodb://localhost:27017/parlamd_dev
-
-  rabbitmq:
-    host: localhost
-    port: 5672
-    username: guest
-    password: guest
-
-rabbitmq:
-  exchanges:
-    model-training: model-training-exchange
-    notifications: notifications-exchange
-    analysis: analysis-exchange
-  queues:
-    model-training: model-training-queue
-    notifications: notifications-queue
-    analysis: analysis-queue
-  routing-keys:
-    model-training: model.training
-    notifications: notifications
-    analysis: analysis
-
-keycloak:
-  auth-server-url: http://localhost:8080
-  realm: parlamd
-  client-id: parlamd-backend
-  client-secret: ${KEYCLOAK_CLIENT_SECRET:dev-secret-change-me}
-
-app:
-  security:
-    token-validation:
-      enabled: true
-    rate-limiting:
-      enabled: false
-
-logging:
-  level:
-    br.gov.md.parla_md_backend: DEBUG
-    org.springframework.security: DEBUG
-    org.springframework.web: DEBUG
-    org.springframework.data.mongodb: DEBUG
-
----
-# Profile de Teste
-spring:
-  config:
-    activate:
-      on-profile: test
-
-  data:
-    mongodb:
-      uri: mongodb://localhost:27017/parlamd_test
-
-  rabbitmq:
-    host: localhost
-    port: 5672
-    username: guest
-    password: guest
-
-rabbitmq:
-  exchanges:
-    model-training: model-training-exchange-test
-    notifications: notifications-exchange-test
-    analysis: analysis-exchange-test
-  queues:
-    model-training: model-training-queue-test
-    notifications: notifications-queue-test
-    analysis: analysis-queue-test
-  routing-keys:
-    model-training: model.training.test
-    notifications: notifications.test
-    analysis: analysis.test
-
-keycloak:
-  auth-server-url: http://localhost:8080
-  realm: parlamd-test
-  client-id: parlamd-backend-test
-  client-secret: ${KEYCLOAK_CLIENT_SECRET:test-secret}
-
-app:
-  security:
-    token-validation:
-      enabled: false
-    rate-limiting:
-      enabled: false
-
-logging:
-  level:
-    br.gov.md.parla_md_backend: WARN
-    org.springframework: WARN
-    org.mongodb.driver: ERROR
-
----
-# Profile de Produção
-spring:
-  config:
-    activate:
-      on-profile: prod
-
-  data:
-    mongodb:
-      uri: ${MONGODB_URI}
-
-  rabbitmq:
-    host: ${SPRING_RABBITMQ_HOST}
-    port: ${SPRING_RABBITMQ_PORT}
-    username: ${SPRING_RABBITMQ_USERNAME}
-    password: ${SPRING_RABBITMQ_PASSWORD}
-    ssl:
-      enabled: true
-
-rabbitmq:
-  exchanges:
-    model-training: ${RABBITMQ_EXCHANGE_MODEL_TRAINING:model-training-exchange}
-    notifications: ${RABBITMQ_EXCHANGE_NOTIFICATIONS:notifications-exchange}
-    analysis: ${RABBITMQ_EXCHANGE_ANALYSIS:analysis-exchange}
-  queues:
-    model-training: ${RABBITMQ_QUEUE_MODEL_TRAINING:model-training-queue}
-    notifications: ${RABBITMQ_QUEUE_NOTIFICATIONS:notifications-queue}
-    analysis: ${RABBITMQ_QUEUE_ANALYSIS:analysis-queue}
-  routing-keys:
-    model-training: ${RABBITMQ_ROUTING_KEY_MODEL_TRAINING:model.training}
-    notifications: ${RABBITMQ_ROUTING_KEY_NOTIFICATIONS:notifications}
-    analysis: ${RABBITMQ_ROUTING_KEY_ANALYSIS:analysis}
-
-keycloak:
-  auth-server-url: ${KEYCLOAK_AUTH_URL}
-  realm: ${KEYCLOAK_REALM}
-  client-id: ${KEYCLOAK_CLIENT_ID}
-  client-secret: ${KEYCLOAK_CLIENT_SECRET}
-  ssl-required: all
-
-server:
-  port: ${SERVER_PORT:8081}
-  ssl:
-    enabled: ${SSL_ENABLED:false}
-    key-store: ${SSL_KEYSTORE_PATH}
-    key-store-password: ${SSL_KEYSTORE_PASSWORD}
-    key-store-type: PKCS12
-
-app:
-  cors:
-    allowed-origins:
-      - ${FRONTEND_URL_PROD}
-  security:
-    enable-csrf: true
-    token-validation:
-      enabled: true
-    rate-limiting:
-      enabled: true
-      requests-per-minute: 60
-
-logging:
-  level:
-    root: INFO
-    br.gov.md.parla_md_backend: INFO
-    org.springframework.security: WARN
-  file:
-    name: /var/log/parlamd/parlamd-backend.log
-
----
-# Profile para Docker (usa variáveis do docker-compose)
-spring:
-  config:
-    activate:
-      on-profile: docker
-
-  data:
-    mongodb:
-      uri: ${SPRING_DATA_MONGODB_URI}
-
-  rabbitmq:
-    host: ${SPRING_RABBITMQ_HOST}
-    port: ${SPRING
+#spring:
+#  application:
+#    name: parla-md-backend
+#  profiles:
+#    active: ${SPRING_PROFILES_ACTIVE:dev}
+#
+#  # Configuração do MongoDB
+#  data:
+#    mongodb:
+#      uri: ${MONGODB_URI:mongodb://localhost:27017/parlamd}
+#      auto-index-creation: true
+#
+#  # Configuração do RabbitMQ
+#  rabbitmq:
+#    host: ${SPRING_RABBITMQ_HOST:localhost}
+#    port: ${SPRING_RABBITMQ_PORT:5672}
+#    username: ${SPRING_RABBITMQ_USERNAME:guest}
+#    password: ${SPRING_RABBITMQ_PASSWORD:guest}
+#    virtual-host: ${SPRING_RABBITMQ_VIRTUAL_HOST:/}
+#    connection-timeout: 5000
+#    template:
+#      retry:
+#        enabled: true
+#        initial-interval: 2000
+#        multiplier: 1.5
+#        max-attempts: 3
+#
+#  # Configuração de Segurança OAuth2/JWT com Keycloak
+#  security:
+#    oauth2:
+#      resourceserver:
+#        jwt:
+#          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/parlamd}
+#          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/parlamd/protocol/openid-connect/certs}
+#
+#  # Configuração de Cache
+#  cache:
+#    type: caffeine
+#    caffeine:
+#      spec: maximumSize=500,expireAfterWrite=10m
+#
+#rabbitmq:
+#  exchanges:
+#    tramitacao: ${RABBITMQ_EXCHANGE_TRAMITACAO:parlamd.tramitacao.exchange}
+#    notificacao: ${RABBITMQ_EXCHANGE_NOTIFICACAO:parlamd.notificacao.exchange}
+#    analise-llm: ${RABBITMQ_EXCHANGE_ANALISE_LLM:parlamd.analise.llm.exchange}
+#    atualizacao-api: ${RABBITMQ_EXCHANGE_ATUALIZACAO_API:parlamd.atualizacao.api.exchange}
+#    votacao: ${RABBITMQ_EXCHANGE_VOTACAO:parlamd.votacao.exchange}
+#
+#  queues:
+#    tramitacao: ${RABBITMQ_QUEUE_TRAMITACAO:parlamd.tramitacao.queue}
+#    tramitacao-dlq: ${RABBITMQ_QUEUE_TRAMITACAO_DLQ:parlamd.tramitacao.queue.dlq}
+#    notificacao: ${RABBITMQ_QUEUE_NOTIFICACAO:parlamd.notificacao.queue}
+#    notificacao-dlq: ${RABBITMQ_QUEUE_NOTIFICACAO_DLQ:parlamd.notificacao.queue.dlq}
+#    analise-llm: ${RABBITMQ_QUEUE_ANALISE_LLM:parlamd.analise.llm.queue}
+#    analise-llm-dlq: ${RABBITMQ_QUEUE_ANALISE_LLM_DLQ:parlamd.analise.llm.queue.dlq}
+#    atualizacao-api: ${RABBITMQ_QUEUE_ATUALIZACAO_API:parlamd.atualizacao.api.queue}
+#    atualizacao-api-dlq: ${RABBITMQ_QUEUE_ATUALIZACAO_API_DLQ:parlamd.atualizacao.api.queue.dlq}
+#    votacao: ${RABBITMQ_QUEUE_VOTACAO:parlamd.votacao.queue}
+#    votacao-dlq: ${RABBITMQ_QUEUE_VOTACAO_DLQ:parlamd.votacao.queue.dlq}
+#
+#  routing-keys:
+#    tramitacao-processar: ${RABBITMQ_ROUTING_KEY_TRAMITACAO:tramitacao.processar}
+#    notificacao-enviar: ${RABBITMQ_ROUTING_KEY_NOTIFICACAO:notificacao.enviar}
+#    analise-llm-processar: ${RABBITMQ_ROUTING_KEY_ANALISE_LLM:analise.llm.processar}
+#    atualizacao-api: ${RABBITMQ_ROUTING_KEY_ATUALIZACAO_API:api.atualizar}
+#    votacao-processar: ${RABBITMQ_ROUTING_KEY_VOTACAO_PROCESSAR:votacao.processar}
+#    votacao-concluida: ${RABBITMQ_ROUTING_KEY_VOTACAO_CONCLUIDA:votacao.concluida}
+#    voto-registrado: ${RABBITMQ_ROUTING_KEY_VOTO_REGISTRADO:voto.registrado}
+#
+#  dlq:
+#    suffix: ${RABBITMQ_DLQ_SUFFIX:.dlq}
+#    exchange-suffix: ${RABBITMQ_DLX_SUFFIX:.dlx}
+#
+#  ttl:
+#    tramitacao: ${RABBITMQ_TTL_TRAMITACAO:3600000}     # 1 hora
+#    notificacao: ${RABBITMQ_TTL_NOTIFICACAO:7200000}   # 2 horas
+#    analise-llm: ${RABBITMQ_TTL_ANALISE_LLM:1800000}   # 30 minutos
+#    atualizacao-api: ${RABBITMQ_TTL_ATUALIZACAO_API:3600000}  # 1 hora
+#    votacao: ${RABBITMQ_TTL_VOTACAO:600000}            # 10 minutos
+#
+## Configuração do servidor
+#server:
+#  port: ${SERVER_PORT:8081}
+#  forward-headers-strategy: native
+#  servlet:
+#    context-path: /
+#  compression:
+#    enabled: true
+#    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+#
+## Configuração do Keycloak - SIMPLIFICADO (usa variáveis de ambiente)
+#keycloak:
+#  realm: ${KEYCLOAK_REALM:parlamd}
+#  auth-server-url: ${KEYCLOAK_AUTH_SERVER_URL:http://localhost:8080}
+#  ssl-required: external
+#  client-id: ${KEYCLOAK_CLIENT_ID:parla-md-client}
+#  client-secret: ${KEYCLOAK_CLIENT_SECRET}
+#  verify-token-audience: true
+#
+## Configurações específicas da aplicação
+#app:
+#  # Configuração de CORS
+#  cors:
+#    allowed-origins:
+#      - ${FRONTEND_URL:http://localhost:4200}
+#      - ${FRONTEND_URL_DEV:http://localhost:3000}
+#      - ${FRONTEND_URL_PROD:https://parlamd.gov.br}
+#    allowed-methods: GET,POST,PUT,DELETE,PATCH,OPTIONS
+#    allowed-headers: "*"
+#    allow-credentials: true
+#    max-age: 3600
+#
+#  # Configuração de Segurança
+#  security:
+#    oauth2:
+#      enabled: ${OAUTH2_ENABLED:true}
+#    enable-csrf: ${ENABLE_CSRF:false}
+#    token-validation:
+#      enabled: ${TOKEN_VALIDATION_ENABLED:true}
+#      cache-duration: 600
+#    rate-limiting:
+#      enabled: ${RATE_LIMITING_ENABLED:true}
+#      requests-per-minute: 100
+#
+#ollama:
+#  url: ${OLLAMA_SERVER:http://localhost:11434}
+#  model: llama3.2:3b
+#  timeout: 60000
+#  temperature: 0.7
+#
+#cache:
+#  llm:
+#    ttl: 3600
+#    max-entries: 1000
+#
+## Configuração do OpenAPI/Swagger
+#springdoc:
+#  api-docs:
+#    path: /v3/api-docs
+#    enabled: true
+#  swagger-ui:
+#    path: /swagger-ui.html
+#    operations-sorter: method
+#    tags-sorter: alpha
+#    enabled: true
+#    csrf:
+#      enabled: false
+#    syntax-highlight:
+#      activated: true
+#    try-it-out-enabled: true
+#    filter: true
+#    display-request-duration: true
+#  show-actuator: true
+#  packages-to-scan: br.gov.md.parla_md_backend.controller
+#  default-produces-media-type: application/json
+#  default-consumes-media-type: application/json
+#  paths-to-match: /api/**
+#
+## Configuração de Logging
+#logging:
+#  level:
+#    root: ${LOG_LEVEL_ROOT:INFO}
+#    br.gov.md.parla_md_backend: ${LOG_LEVEL_APP:INFO}
+#    org.springframework.security: ${LOG_LEVEL_SECURITY:INFO}
+#    org.springframework.web: ${LOG_LEVEL_WEB:INFO}
+#    org.springframework.amqp: ${LOG_LEVEL_AMQP:INFO}
+#    org.springframework.data.mongodb: ${LOG_LEVEL_MONGODB:INFO}
+#    org.mongodb.driver: ${LOG_LEVEL_MONGODB_DRIVER:WARN}
+#  pattern:
+#    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+#    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+#  file:
+#    name: logs/parlamd-backend.log
+#  logback:
+#    rollingpolicy:
+#      max-file-size: 100MB
+#      max-history: 30
+#
+## Configuração do Actuator
+#management:
+#  endpoints:
+#    web:
+#      exposure:
+#        include: health,info,metrics,prometheus
+#      base-path: /actuator
+#  endpoint:
+#    health:
+#      show-details: when_authorized
+#      show-components: always
+#  health:
+#    diskspace:
+#      enabled: true
+#    mongo:
+#      enabled: true
+#    rabbit:
+#      enabled: true
+#  info:
+#    env:
+#      enabled: true
+#    git:
+#      mode: full
+#  prometheus:
+#    metrics:
+#      export:
+#        enabled: true
+#
+## Configurações de APIs Externas
+#camara:
+#  api:
+#    base-url: ${CAMARA_API_URL:https://dadosabertos.camara.leg.br/api/v2/}
+#    timeout: 30000
+#    rate-limit:
+#      requests-per-second: 10
+#
+#senado:
+#  api:
+#    base-url: ${SENADO_API_URL:https://legis.senado.leg.br/dadosabertos/}
+#    timeout: 30000
+#    rate-limit:
+#      requests-per-second: 10
+#
+## Configuração de arquivos de busca
+#search:
+#  terms:
+#    file: classpath:search_terms.txt
+#
+#---
+## Profile para desenvolvimento SEM autenticacao
+#spring:
+#  config:
+#    activate:
+#      on-profile: no-auth
+#
+#  data:
+#    mongodb:
+#      uri: mongodb://localhost:27017/parlamd_dev
+#
+#  rabbitmq:
+#    host: localhost
+#    port: 5672
+#    username: guest
+#    password: guest
+#
+#rabbitmq:
+#  exchanges:
+#    tramitacao: ${RABBITMQ_EXCHANGE_TRAMITACAO:parlamd.tramitacao.exchange}
+#    notificacao: ${RABBITMQ_EXCHANGE_NOTIFICACAO:parlamd.notificacao.exchange}
+#    analise-llm: ${RABBITMQ_EXCHANGE_ANALISE_LLM:parlamd.analise.llm.exchange}
+#    atualizacao-api: ${RABBITMQ_EXCHANGE_ATUALIZACAO_API:parlamd.atualizacao.api.exchange}
+#    votacao: ${RABBITMQ_EXCHANGE_VOTACAO:parlamd.votacao.exchange}
+#
+#  queues:
+#    tramitacao: ${RABBITMQ_QUEUE_TRAMITACAO:parlamd.tramitacao.queue}
+#    tramitacao-dlq: ${RABBITMQ_QUEUE_TRAMITACAO_DLQ:parlamd.tramitacao.queue.dlq}
+#    notificacao: ${RABBITMQ_QUEUE_NOTIFICACAO:parlamd.notificacao.queue}
+#    notificacao-dlq: ${RABBITMQ_QUEUE_NOTIFICACAO_DLQ:parlamd.notificacao.queue.dlq}
+#    analise-llm: ${RABBITMQ_QUEUE_ANALISE_LLM:parlamd.analise.llm.queue}
+#    analise-llm-dlq: ${RABBITMQ_QUEUE_ANALISE_LLM_DLQ:parlamd.analise.llm.queue.dlq}
+#    atualizacao-api: ${RABBITMQ_QUEUE_ATUALIZACAO_API:parlamd.atualizacao.api.queue}
+#    atualizacao-api-dlq: ${RABBITMQ_QUEUE_ATUALIZACAO_API_DLQ:parlamd.atualizacao.api.queue.dlq}
+#    votacao: ${RABBITMQ_QUEUE_VOTACAO:parlamd.votacao.queue}
+#    votacao-dlq: ${RABBITMQ_QUEUE_VOTACAO_DLQ:parlamd.votacao.queue.dlq}
+#
+#  routing-keys:
+#    tramitacao-processar: ${RABBITMQ_ROUTING_KEY_TRAMITACAO:tramitacao.processar}
+#    notificacao-enviar: ${RABBITMQ_ROUTING_KEY_NOTIFICACAO:notificacao.enviar}
+#    analise-llm-processar: ${RABBITMQ_ROUTING_KEY_ANALISE_LLM:analise.llm.processar}
+#    atualizacao-api: ${RABBITMQ_ROUTING_KEY_ATUALIZACAO_API:api.atualizar}
+#    votacao-processar: ${RABBITMQ_ROUTING_KEY_VOTACAO_PROCESSAR:votacao.processar}
+#    votacao-concluida: ${RABBITMQ_ROUTING_KEY_VOTACAO_CONCLUIDA:votacao.concluida}
+#    voto-registrado: ${RABBITMQ_ROUTING_KEY_VOTO_REGISTRADO:voto.registrado}
+#
+#  dlq:
+#    suffix: ${RABBITMQ_DLQ_SUFFIX:.dlq}
+#    exchange-suffix: ${RABBITMQ_DLX_SUFFIX:.dlx}
+#
+#  ttl:
+#    tramitacao: ${RABBITMQ_TTL_TRAMITACAO:3600000}     # 1 hora
+#    notificacao: ${RABBITMQ_TTL_NOTIFICACAO:7200000}   # 2 horas
+#    analise-llm: ${RABBITMQ_TTL_ANALISE_LLM:1800000}   # 30 minutos
+#    atualizacao-api: ${RABBITMQ_TTL_ATUALIZACAO_API:3600000}  # 1 hora
+#    votacao: ${RABBITMQ_TTL_VOTACAO:600000}            # 10 minutos
+#
+#app:
+#  security:
+#    oauth2:
+#      enabled: false
+#    token-validation:
+#      enabled: false
+#    rate-limiting:
+#      enabled: false
+#
+#logging:
+#  level:
+#    br.gov.md.parla_md_backend: DEBUG
+#    org.springframework.security: DEBUG
+#    org.springframework.web: DEBUG
+#
+#---
+## Profile de Desenvolvimento
+#spring:
+#  config:
+#    activate:
+#      on-profile: dev
+#
+#  data:
+#    mongodb:
+#      uri: mongodb://localhost:27017/parlamd_dev
+#
+#  rabbitmq:
+#    host: localhost
+#    port: 5672
+#    username: guest
+#    password: guest
+#
+#rabbitmq:
+#  exchanges:
+#    tramitacao: ${RABBITMQ_EXCHANGE_TRAMITACAO:parlamd.tramitacao.exchange}
+#    notificacao: ${RABBITMQ_EXCHANGE_NOTIFICACAO:parlamd.notificacao.exchange}
+#    analise-llm: ${RABBITMQ_EXCHANGE_ANALISE_LLM:parlamd.analise.llm.exchange}
+#    atualizacao-api: ${RABBITMQ_EXCHANGE_ATUALIZACAO_API:parlamd.atualizacao.api.exchange}
+#    votacao: ${RABBITMQ_EXCHANGE_VOTACAO:parlamd.votacao.exchange}
+#
+#  queues:
+#    tramitacao: ${RABBITMQ_QUEUE_TRAMITACAO:parlamd.tramitacao.queue}
+#    tramitacao-dlq: ${RABBITMQ_QUEUE_TRAMITACAO_DLQ:parlamd.tramitacao.queue.dlq}
+#    notificacao: ${RABBITMQ_QUEUE_NOTIFICACAO:parlamd.notificacao.queue}
+#    notificacao-dlq: ${RABBITMQ_QUEUE_NOTIFICACAO_DLQ:parlamd.notificacao.queue.dlq}
+#    analise-llm: ${RABBITMQ_QUEUE_ANALISE_LLM:parlamd.analise.llm.queue}
+#    analise-llm-dlq: ${RABBITMQ_QUEUE_ANALISE_LLM_DLQ:parlamd.analise.llm.queue.dlq}
+#    atualizacao-api: ${RABBITMQ_QUEUE_ATUALIZACAO_API:parlamd.atualizacao.api.queue}
+#    atualizacao-api-dlq: ${RABBITMQ_QUEUE_ATUALIZACAO_API_DLQ:parlamd.atualizacao.api.queue.dlq}
+#    votacao: ${RABBITMQ_QUEUE_VOTACAO:parlamd.votacao.queue}
+#    votacao-dlq: ${RABBITMQ_QUEUE_VOTACAO_DLQ:parlamd.votacao.queue.dlq}
+#
+#  routing-keys:
+#    tramitacao-processar: ${RABBITMQ_ROUTING_KEY_TRAMITACAO:tramitacao.processar}
+#    notificacao-enviar: ${RABBITMQ_ROUTING_KEY_NOTIFICACAO:notificacao.enviar}
+#    analise-llm-processar: ${RABBITMQ_ROUTING_KEY_ANALISE_LLM:analise.llm.processar}
+#    atualizacao-api: ${RABBITMQ_ROUTING_KEY_ATUALIZACAO_API:api.atualizar}
+#    votacao-processar: ${RABBITMQ_ROUTING_KEY_VOTACAO_PROCESSAR:votacao.processar}
+#    votacao-concluida: ${RABBITMQ_ROUTING_KEY_VOTACAO_CONCLUIDA:votacao.concluida}
+#    voto-registrado: ${RABBITMQ_ROUTING_KEY_VOTO_REGISTRADO:voto.registrado}
+#
+#  dlq:
+#    suffix: ${RABBITMQ_DLQ_SUFFIX:.dlq}
+#    exchange-suffix: ${RABBITMQ_DLX_SUFFIX:.dlx}
+#
+#  ttl:
+#    tramitacao: ${RABBITMQ_TTL_TRAMITACAO:3600000}     # 1 hora
+#    notificacao: ${RABBITMQ_TTL_NOTIFICACAO:7200000}   # 2 horas
+#    analise-llm: ${RABBITMQ_TTL_ANALISE_LLM:1800000}   # 30 minutos
+#    atualizacao-api: ${RABBITMQ_TTL_ATUALIZACAO_API:3600000}  # 1 hora
+#    votacao: ${RABBITMQ_TTL_VOTACAO:600000}            # 10 minutos
+#
+#keycloak:
+#  auth-server-url: http://localhost:8080
+#  realm: parlamd
+#  client-id: parla-md-client
+#  client-secret: ${KEYCLOAK_CLIENT_SECRET:RnMndotWYb52i2aNpIe2fQNb12kRUSxa}
+#
+#app:
+#  security:
+#    token-validation:
+#      enabled: true
+#    rate-limiting:
+#      enabled: false
+#
+#logging:
+#  level:
+#    br.gov.md.parla_md_backend: DEBUG
+#    org.springframework.security: DEBUG
+#    org.springframework.web: DEBUG
+#    org.springframework.data.mongodb: DEBUG
+#
+#---
+## Profile de Teste
+#spring:
+#  config:
+#    activate:
+#      on-profile: test
+#
+#  data:
+#    mongodb:
+#      uri: mongodb://localhost:27017/parlamd_test
+#
+#  rabbitmq:
+#    host: localhost
+#    port: 5672
+#    username: guest
+#    password: guest
+#
+#rabbitmq:
+#  exchanges:
+#    tramitacao: ${RABBITMQ_EXCHANGE_TRAMITACAO:parlamd.tramitacao.exchange}
+#    notificacao: ${RABBITMQ_EXCHANGE_NOTIFICACAO:parlamd.notificacao.exchange}
+#    analise-llm: ${RABBITMQ_EXCHANGE_ANALISE_LLM:parlamd.analise.llm.exchange}
+#    atualizacao-api: ${RABBITMQ_EXCHANGE_ATUALIZACAO_API:parlamd.atualizacao.api.exchange}
+#    votacao: ${RABBITMQ_EXCHANGE_VOTACAO:parlamd.votacao.exchange}
+#
+#  queues:
+#    tramitacao: ${RABBITMQ_QUEUE_TRAMITACAO:parlamd.tramitacao.queue}
+#    tramitacao-dlq: ${RABBITMQ_QUEUE_TRAMITACAO_DLQ:parlamd.tramitacao.queue.dlq}
+#    notificacao: ${RABBITMQ_QUEUE_NOTIFICACAO:parlamd.notificacao.queue}
+#    notificacao-dlq: ${RABBITMQ_QUEUE_NOTIFICACAO_DLQ:parlamd.notificacao.queue.dlq}
+#    analise-llm: ${RABBITMQ_QUEUE_ANALISE_LLM:parlamd.analise.llm.queue}
+#    analise-llm-dlq: ${RABBITMQ_QUEUE_ANALISE_LLM_DLQ:parlamd.analise.llm.queue.dlq}
+#    atualizacao-api: ${RABBITMQ_QUEUE_ATUALIZACAO_API:parlamd.atualizacao.api.queue}
+#    atualizacao-api-dlq: ${RABBITMQ_QUEUE_ATUALIZACAO_API_DLQ:parlamd.atualizacao.api.queue.dlq}
+#    votacao: ${RABBITMQ_QUEUE_VOTACAO:parlamd.votacao.queue}
+#    votacao-dlq: ${RABBITMQ_QUEUE_VOTACAO_DLQ:parlamd.votacao.queue.dlq}
+#
+#  routing-keys:
+#    tramitacao-processar: ${RABBITMQ_ROUTING_KEY_TRAMITACAO:tramitacao.processar}
+#    notificacao-enviar: ${RABBITMQ_ROUTING_KEY_NOTIFICACAO:notificacao.enviar}
+#    analise-llm-processar: ${RABBITMQ_ROUTING_KEY_ANALISE_LLM:analise.llm.processar}
+#    atualizacao-api: ${RABBITMQ_ROUTING_KEY_ATUALIZACAO_API:api.atualizar}
+#    votacao-processar: ${RABBITMQ_ROUTING_KEY_VOTACAO_PROCESSAR:votacao.processar}
+#    votacao-concluida: ${RABBITMQ_ROUTING_KEY_VOTACAO_CONCLUIDA:votacao.concluida}
+#    voto-registrado: ${RABBITMQ_ROUTING_KEY_VOTO_REGISTRADO:voto.registrado}
+#
+#  dlq:
+#    suffix: ${RABBITMQ_DLQ_SUFFIX:.dlq}
+#    exchange-suffix: ${RABBITMQ_DLX_SUFFIX:.dlx}
+#
+#  ttl:
+#    tramitacao: ${RABBITMQ_TTL_TRAMITACAO:3600000}     # 1 hora
+#    notificacao: ${RABBITMQ_TTL_NOTIFICACAO:7200000}   # 2 horas
+#    analise-llm: ${RABBITMQ_TTL_ANALISE_LLM:1800000}   # 30 minutos
+#    atualizacao-api: ${RABBITMQ_TTL_ATUALIZACAO_API:3600000}  # 1 hora
+#    votacao: ${RABBITMQ_TTL_VOTACAO:600000}            # 10 minutos
+#
+#keycloak:
+#  auth-server-url: http://localhost:8080
+#  realm: parlamd
+#  client-id: parla-md-client
+#  client-secret: ${KEYCLOAK_CLIENT_SECRET:RnMndotWYb52i2aNpIe2fQNb12kRUSxa}
+#
+#app:
+#  security:
+#    token-validation:
+#      enabled: false
+#    rate-limiting:
+#      enabled: false
+#
+#logging:
+#  level:
+#    br.gov.md.parla_md_backend: WARN
+#    org.springframework: WARN
+#    org.mongodb.driver: ERROR
+#
+#---
+## Profile de Produção
+#spring:
+#  config:
+#    activate:
+#      on-profile: prod
+#
+#  data:
+#    mongodb:
+#      uri: ${MONGODB_URI}
+#
+#  rabbitmq:
+#    host: ${SPRING_RABBITMQ_HOST}
+#    port: ${SPRING_RABBITMQ_PORT}
+#    username: ${SPRING_RABBITMQ_USERNAME}
+#    password: ${SPRING_RABBITMQ_PASSWORD}
+#    ssl:
+#      enabled: true
+#
+#rabbitmq:
+#  exchanges:
+#    tramitacao: ${RABBITMQ_EXCHANGE_TRAMITACAO:parlamd.tramitacao.exchange}
+#    notificacao: ${RABBITMQ_EXCHANGE_NOTIFICACAO:parlamd.notificacao.exchange}
+#    analise-llm: ${RABBITMQ_EXCHANGE_ANALISE_LLM:parlamd.analise.llm.exchange}
+#    atualizacao-api: ${RABBITMQ_EXCHANGE_ATUALIZACAO_API:parlamd.atualizacao.api.exchange}
+#    votacao: ${RABBITMQ_EXCHANGE_VOTACAO:parlamd.votacao.exchange}
+#
+#  queues:
+#    tramitacao: ${RABBITMQ_QUEUE_TRAMITACAO:parlamd.tramitacao.queue}
+#    tramitacao-dlq: ${RABBITMQ_QUEUE_TRAMITACAO_DLQ:parlamd.tramitacao.queue.dlq}
+#    notificacao: ${RABBITMQ_QUEUE_NOTIFICACAO:parlamd.notificacao.queue}
+#    notificacao-dlq: ${RABBITMQ_QUEUE_NOTIFICACAO_DLQ:parlamd.notificacao.queue.dlq}
+#    analise-llm: ${RABBITMQ_QUEUE_ANALISE_LLM:parlamd.analise.llm.queue}
+#    analise-llm-dlq: ${RABBITMQ_QUEUE_ANALISE_LLM_DLQ:parlamd.analise.llm.queue.dlq}
+#    atualizacao-api: ${RABBITMQ_QUEUE_ATUALIZACAO_API:parlamd.atualizacao.api.queue}
+#    atualizacao-api-dlq: ${RABBITMQ_QUEUE_ATUALIZACAO_API_DLQ:parlamd.atualizacao.api.queue.dlq}
+#    votacao: ${RABBITMQ_QUEUE_VOTACAO:parlamd.votacao.queue}
+#    votacao-dlq: ${RABBITMQ_QUEUE_VOTACAO_DLQ:parlamd.votacao.queue.dlq}
+#
+#  routing-keys:
+#    tramitacao-processar: ${RABBITMQ_ROUTING_KEY_TRAMITACAO:tramitacao.processar}
+#    notificacao-enviar: ${RABBITMQ_ROUTING_KEY_NOTIFICACAO:notificacao.enviar}
+#    analise-llm-processar: ${RABBITMQ_ROUTING_KEY_ANALISE_LLM:analise.llm.processar}
+#    atualizacao-api: ${RABBITMQ_ROUTING_KEY_ATUALIZACAO_API:api.atualizar}
+#    votacao-processar: ${RABBITMQ_ROUTING_KEY_VOTACAO_PROCESSAR:votacao.processar}
+#    votacao-concluida: ${RABBITMQ_ROUTING_KEY_VOTACAO_CONCLUIDA:votacao.concluida}
+#    voto-registrado: ${RABBITMQ_ROUTING_KEY_VOTO_REGISTRADO:voto.registrado}
+#
+#  dlq:
+#    suffix: ${RABBITMQ_DLQ_SUFFIX:.dlq}
+#    exchange-suffix: ${RABBITMQ_DLX_SUFFIX:.dlx}
+#
+#  ttl:
+#    tramitacao: ${RABBITMQ_TTL_TRAMITACAO:3600000}     # 1 hora
+#    notificacao: ${RABBITMQ_TTL_NOTIFICACAO:7200000}   # 2 horas
+#    analise-llm: ${RABBITMQ_TTL_ANALISE_LLM:1800000}   # 30 minutos
+#    atualizacao-api: ${RABBITMQ_TTL_ATUALIZACAO_API:3600000}  # 1 hora
+#    votacao: ${RABBITMQ_TTL_VOTACAO:600000}            # 10 minutos
+#
+#keycloak:
+#  realm: ${KEYCLOAK_REALM}
+#  client-id: ${KEYCLOAK_CLIENT_ID}
+#  client-secret: ${KEYCLOAK_CLIENT_SECRET}
+#  ssl-required: all
+#
+#server:
+#  port: ${SERVER_PORT:8081}
+#  ssl:
+#    enabled: ${SSL_ENABLED:false}
+#    key-store: ${SSL_KEYSTORE_PATH}
+#    key-store-password: ${SSL_KEYSTORE_PASSWORD}
+#    key-store-type: PKCS12
+#
+#app:
+#  cors:
+#    allowed-origins:
+#      - ${FRONTEND_URL_PROD}
+#  security:
+#    enable-csrf: true
+#    token-validation:
+#      enabled: true
+#    rate-limiting:
+#      enabled: true
+#      requests-per-minute: 60
+#
+#logging:
+#  level:
+#    root: INFO
+#    br.gov.md.parla_md_backend: INFO
+#    org.springframework.security: WARN
+#  file:
+#    name: /var/log/parlamd/parlamd-backend.log
+#
+#---
+## Profile para Docker (usa variáveis do docker-compose)
+#spring:
+#  config:
+#    activate:
+#      on-profile: docker
+#
+#  data:
+#    mongodb:
+#      uri: ${SPRING_DATA_MONGODB_URI}
+#
+#  rabbitmq:
+#    host: ${SPRING_RABBITMQ_HOST}
+#    port: ${SPRING

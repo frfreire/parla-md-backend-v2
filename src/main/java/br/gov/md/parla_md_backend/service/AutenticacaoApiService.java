@@ -38,7 +38,7 @@ public class AutenticacaoApiService {
     @Value("${keycloak.realm:parlamd}")
     private String keycloakRealm;
 
-    @Value("${keycloak.resource:parlamd-frontend}")
+    @Value("${keycloak.resource:parla-md-client}")
     private String keycloakClientId;
 
     @Value("${app.keycloak.token-lifetime:3600}")

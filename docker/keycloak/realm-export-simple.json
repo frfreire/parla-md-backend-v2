@@ -1,149 +1,36 @@
 {
   "realm": "parlamd",
   "enabled": true,
-  "displayName": "Parla-MD - Sistema de Monitoramento Legislativo",
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "resetPasswordAllowed": true,
   "accessTokenLifespan": 3600,
-  "accessTokenLifespanForImplicitFlow": 900,
   "ssoSessionIdleTimeout": 1800,
   "ssoSessionMaxLifespan": 36000,
-  "accessCodeLifespan": 60,
-  "accessCodeLifespanUserAction": 300,
-  "accessCodeLifespanLogin": 1800,
-  "internationalizationEnabled": true,
-  "supportedLocales": ["pt-BR", "en"],
-  "defaultLocale": "pt-BR",
+  "clients": [
+    {
+      "clientId": "parlamd-backend",
+      "enabled": true,
+      "bearerOnly": true,
+      "publicClient": false,
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "parla-md-client",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "redirectUris": ["http://localhost:4200/*"],
+      "webOrigins": ["http://localhost:4200"]
+    }
+  ],
   "users": [
     {
       "username": "admin",
       "enabled": true,
-      "firstName": "Administrador",
-      "lastName": "Sistema",
       "email": "admin@parlamd.gov.br",
-      "emailVerified": true,
-      "credentials": [
-        {
-          "type": "password",
-          "value": "admin123",
-          "temporary": false
-        }
-      ],
-      "realmRoles": ["user"],
-      "clientRoles": {
-        "parlamd-backend": ["ADMIN"]
-      }
-    },
-    {
-      "username": "analista",
-      "enabled": true,
-      "firstName": "Analista",
-      "lastName": "Legislativo",
-      "email": "analista@parlamd.gov.br",
-      "emailVerified": true,
-      "credentials": [
-        {
-          "type": "password",
-          "value": "analista123",
-          "temporary": false
-        }
-      ],
-      "realmRoles": ["user"],
-      "clientRoles": {
-        "parlamd-backend": ["ANALISTA"]
-      }
-    },
-    {
-      "username": "gestor",
-      "enabled": true,
-      "firstName": "Gestor",
-      "lastName": "Executivo",
-      "email": "gestor@parlamd.gov.br",
-      "emailVerified": true,
-      "credentials": [
-        {
-          "type": "password",
-          "value": "gestor123",
-          "temporary": false
-        }
-      ],
-      "realmRoles": ["user"],
-      "clientRoles": {
-        "parlamd-backend": ["GESTOR"]
-      }
-    }
-  ],
-  "roles": {
-    "realm": [
-      {
-        "name": "user",
-        "description": "Usuário padrão do sistema",
-        "composite": false
-      }
-    ],
-    "client": {
-      "parlamd-backend": [
-        {
-          "name": "ADMIN",
-          "description": "Administrador do sistema com acesso total",
-          "composite": false
-        },
-        {
-          "name": "ANALISTA",
-          "description": "Analista legislativo com acesso a análises e relatórios",
-          "composite": false
-        },
-        {
-          "name": "GESTOR",
-          "description": "Gestor com acesso a dashboards e métricas",
-          "composite": false
-        },
-        {
-          "name": "EXTERNO",
-          "description": "Usuário externo com acesso limitado",
-          "composite": false
-        },
-        {
-          "name": "VIEWER",
-          "description": "Visualizador com acesso somente leitura",
-          "composite": false
-        }
-      ]
-    }
-  },
-  "clients": [
-    {
-      "clientId": "parlamd-backend",
-      "name": "Parla-MD Backend API",
-      "description": "Cliente para o backend da aplicação Parla-MD",
-      "enabled": true,
-      "bearerOnly": true,
-      "publicClient": false,
-      "protocol": "openid-connect",
-      "attributes": {
-        "access.token.lifespan": "3600",
-        "use.refresh.tokens": "true"
-      }
-    },
-    {
-      "clientId": "parlamd-frontend",
-      "name": "Parla-MD Frontend Angular",
-      "description": "Cliente para o frontend Angular da aplicação Parla-MD",
-      "enabled": true,
-      "publicClient": true,
-      "protocol": "openid-connect",
-      "redirectUris": [
-        "http://localhost:4200/*",
-        "https://app.parlamd.gov.br/*",
-        "https://parlamd.gov.br/*"
-      ],
-      "webOrigins": [
-        "http://localhost:4200",
-        "https://app.parlamd.gov.br",
-        "https://parlamd.gov.br"
-      ],
-      "attributes": {
-        "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://localhost:4200/logout-callback##https://app.parlamd.gov.br/logout-callback"
-      }
+      "credentials": [{"type": "password", "value": "admin123", "temporary": false}]
     }
   ]
 }

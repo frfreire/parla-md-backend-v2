@@ -25,34 +25,47 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Endpoints públicos
+                        // ===== ENDPOINTS PÚBLICOS - DEVE VIR PRIMEIRO =====
                         .requestMatchers("/api/publico/**").permitAll()
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
 
-                        // Endpoints de Processos
+                        // ===== SWAGGER E OPENAPI - ORDEM IMPORTANTE =====
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**",
+                                "/v3/api-docs.yaml",
+                                "/swagger-resources/**",
+                                "/webjars/**"
+                        ).permitAll()
+
+                        // ===== ENDPOINTS DE AUTENTICAÇÃO =====
+                        .requestMatchers("/api/auth/config", "/api/auth/health").permitAll()
+
+                        // ===== ENDPOINTS PROTEGIDOS =====
+                        // Processos
                         .requestMatchers(HttpMethod.POST, "/api/processos").hasAnyRole("ADMIN", "ANALISTA", "GESTOR")
                         .requestMatchers(HttpMethod.GET, "/api/processos/**").hasAnyRole("ADMIN", "ANALISTA", "GESTOR", "EXTERNO")
                         .requestMatchers(HttpMethod.PUT, "/api/processos/*/status").hasAnyRole("ADMIN", "GESTOR")
                         .requestMatchers(HttpMethod.PUT, "/api/processos/*/posicao-final").hasRole("ADMIN")
 
-                        // Endpoints de Tramitação
+                        // Tramitação
                         .requestMatchers(HttpMethod.POST, "/api/tramitacoes").hasAnyRole("ADMIN", "ANALISTA", "GESTOR")
                         .requestMatchers(HttpMethod.GET, "/api/tramitacoes/**").hasAnyRole("ADMIN", "ANALISTA", "GESTOR", "EXTERNO")
                         .requestMatchers(HttpMethod.PUT, "/api/tramitacoes/*/receber").hasAnyRole("ADMIN", "ANALISTA", "GESTOR", "EXTERNO")
 
-                        // Endpoints de Parecer
+                        // Parecer
                         .requestMatchers(HttpMethod.POST, "/api/pareceres").hasAnyRole("ADMIN", "GESTOR")
                         .requestMatchers(HttpMethod.PUT, "/api/pareceres/*/emitir").hasAnyRole("ADMIN", "ANALISTA")
                         .requestMatchers(HttpMethod.PUT, "/api/pareceres/*/aprovar").hasAnyRole("ADMIN", "GESTOR")
                         .requestMatchers(HttpMethod.GET, "/api/pareceres/**").hasAnyRole("ADMIN", "ANALISTA", "GESTOR", "EXTERNO")
 
-                        // Endpoints de Posicionamento
+                        // Posicionamento
                         .requestMatchers(HttpMethod.POST, "/api/posicionamentos").hasAnyRole("ADMIN", "GESTOR")
                         .requestMatchers(HttpMethod.PUT, "/api/posicionamentos/*/registrar").hasAnyRole("ADMIN", "EXTERNO")
                         .requestMatchers(HttpMethod.GET, "/api/posicionamentos/**").hasAnyRole("ADMIN", "ANALISTA", "GESTOR", "EXTERNO")
 
-                        // Endpoints de Setores e Órgãos
+                        // Setores e Órgãos
                         .requestMatchers(HttpMethod.POST, "/api/setores").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/setores/*").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/setores/*").hasRole("ADMIN")

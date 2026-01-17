@@ -87,4 +87,45 @@ public class TramitacaoController {
         Tramitacao tramitacao = tramitacaoService.concluir(tramitacaoId, usuarioId);
         return ResponseEntity.ok(tramitacao);
     }
+
+    @PutMapping("/{tramitacaoId}/iniciar-analise")
+    public ResponseEntity<TramitacaoDTO> iniciarAnalise(
+            @PathVariable String tramitacaoId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        String usuarioId = userDetails.getUsername();
+        Tramitacao tramitacao = tramitacaoService.iniciarAnalise(tramitacaoId, usuarioId);
+        return ResponseEntity.ok(tramitacaoService.converterParaDTO(tramitacao));
+    }
+
+    @PutMapping("/{tramitacaoId}/solicitar-parecer")
+    public ResponseEntity<TramitacaoDTO> solicitarParecer(
+            @PathVariable String tramitacaoId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        String usuarioId = userDetails.getUsername();
+        Tramitacao tramitacao = tramitacaoService.solicitarParecer(tramitacaoId, usuarioId);
+        return ResponseEntity.ok(tramitacaoService.converterParaDTO(tramitacao));
+    }
+
+    @PutMapping("/{tramitacaoId}/suspender")
+    public ResponseEntity<TramitacaoDTO> suspender(
+            @PathVariable String tramitacaoId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        String usuarioId = userDetails.getUsername();
+        Tramitacao tramitacao = tramitacaoService.suspender(tramitacaoId, usuarioId);
+        return ResponseEntity.ok(tramitacaoService.converterParaDTO(tramitacao));
+    }
+
+    @PutMapping("/{tramitacaoId}/retomar")
+    public ResponseEntity<TramitacaoDTO> retomar(
+            @PathVariable String tramitacaoId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        String usuarioId = userDetails.getUsername();
+        Tramitacao tramitacao = tramitacaoService.retomar(tramitacaoId, usuarioId);
+        return ResponseEntity.ok(tramitacaoService.converterParaDTO(tramitacao));
+    }
+
 }
