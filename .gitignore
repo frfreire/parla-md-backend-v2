@@ -43,6 +43,7 @@ build/
 *.old
 
 verificar-servicos.ps1
+teste-*
 
 ### Logs ###
 /tmp/

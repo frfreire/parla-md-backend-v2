@@ -1,36 +1,336 @@
 {
   "realm": "parlamd",
   "enabled": true,
+  "displayName": "Parla-MD - Sistema de Acompanhamento Legislativo",
+  "displayNameHtml": "<div class=\"kc-logo-text\"><span>Parla-MD</span></div>",
   "sslRequired": "external",
   "registrationAllowed": false,
+  "registrationEmailAsUsername": false,
+  "rememberMe": true,
+  "verifyEmail": true,
   "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
-  "accessTokenLifespan": 3600,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 5,
+  "accessTokenLifespan": 1800,
+  "accessTokenLifespanForImplicitFlow": 900,
   "ssoSessionIdleTimeout": 1800,
   "ssoSessionMaxLifespan": 36000,
+  "offlineSessionIdleTimeout": 2592000,
+  "offlineSessionMaxLifespanEnabled": false,
+  "accessCodeLifespan": 60,
+  "accessCodeLifespanUserAction": 300,
+  "accessCodeLifespanLogin": 1800,
+  "actionTokenGeneratedByAdminLifespan": 43200,
+  "actionTokenGeneratedByUserLifespan": 300,
+  "oauth2DeviceCodeLifespan": 600,
+  "oauth2DevicePollingInterval": 5,
+  "revokeRefreshToken": false,
+  "refreshTokenMaxReuse": 0,
+  "passwordPolicy": "length(8) and digits(1) and lowerCase(1) and upperCase(1) and specialChars(1) and notUsername(undefined)",
+  "defaultSignatureAlgorithm": "RS256",
+  "roles": {
+    "realm": [
+      {
+        "name": "ADMIN",
+        "description": "Administrador do sistema com acesso total",
+        "composite": false
+      },
+      {
+        "name": "GESTOR",
+        "description": "Gestor de processos legislativos",
+        "composite": false
+      },
+      {
+        "name": "ANALISTA",
+        "description": "Analista técnico responsável por emissão de pareceres",
+        "composite": false
+      },
+      {
+        "name": "EXTERNO",
+        "description": "Órgão externo (Ministérios/Forças Armadas)",
+        "composite": false
+      },
+      {
+        "name": "VIEWER",
+        "description": "Usuário com permissão apenas de visualização",
+        "composite": false
+      }
+    ]
+  },
   "clients": [
     {
-      "clientId": "parlamd-backend",
+      "clientId": "parla-md-client",
+      "name": "Parla MD Application",
+      "description": "Cliente principal do sistema Parla-MD",
       "enabled": true,
-      "bearerOnly": true,
+      "alwaysDisplayInConsole": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "RnMndotWYb52i2aNpIe2fQNb12kRUSxa",
+      "redirectUris": [
+        "http://localhost:4200/*",
+        "http://localhost:8081/*",
+        "https://parla-md.defesa.gov.br/*"
+      ],
+      "webOrigins": [
+        "http://localhost:4200",
+        "http://localhost:8081",
+        "https://parla-md.defesa.gov.br",
+        "+"
+      ],
+      "notBefore": 0,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
       "publicClient": false,
-      "protocol": "openid-connect"
-    },
-    {
-      "clientId": "parlamd-frontend", 
-      "enabled": true,
-      "publicClient": true,
+      "frontchannelLogout": true,
       "protocol": "openid-connect",
-      "redirectUris": ["http://localhost:4200/*"],
-      "webOrigins": ["http://localhost:4200"]
+      "attributes": {
+        "saml.assertion.signature": "false",
+        "saml.force.post.binding": "false",
+        "saml.multivalued.roles": "false",
+        "saml.encrypt": "false",
+        "oauth2.device.authorization.grant.enabled": "false",
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "saml.server.signature": "false",
+        "saml.server.signature.keyinfo.ext": "false",
+        "use.refresh.tokens": "true",
+        "exclude.session.state.from.auth.response": "false",
+        "oidc.ciba.grant.enabled": "false",
+        "saml.artifact.binding": "false",
+        "backchannel.logout.session.required": "true",
+        "client_credentials.use_refresh_token": "false",
+        "saml_force_name_id_format": "false",
+        "require.pushed.authorization.requests": "false",
+        "saml.client.signature": "false",
+        "tls.client.certificate.bound.access.tokens": "false",
+        "saml.authnstatement": "false",
+        "display.on.consent.screen": "false",
+        "saml.onetimeuse.condition": "false",
+        "pkce.code.challenge.method": "S256"
+      },
+      "authenticationFlowBindingOverrides": {},
+      "fullScopeAllowed": true,
+      "nodeReRegistrationTimeout": -1,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "email",
+        "parla-md-roles"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ]
+    }
+  ],
+  "clientScopes": [
+    {
+      "name": "parla-md-roles",
+      "description": "Roles do sistema Parla-MD",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "gui.order": "",
+        "consent.screen.text": "Roles e permissões do Parla-MD"
+      },
+      "protocolMappers": [
+        {
+          "name": "realm-roles-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "client-roles-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-client-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "resource_access.${client_id}.roles",
+            "jsonType.label": "String"
+          }
+        }
+      ]
     }
   ],
   "users": [
     {
-      "username": "admin",
+      "username": "admin.parla@parla.md.gov.br",
       "enabled": true,
-      "email": "admin@parlamd.gov.br",
-      "credentials": [{"type": "password", "value": "admin123", "temporary": false}]
+      "totp": false,
+      "emailVerified": true,
+      "firstName": "Administrador",
+      "lastName": "Sistema",
+      "email": "admin@parla.md.gov.br",
+      "attributes": {
+        "locale": [
+          "pt-BR"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Admin@123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "ADMIN"
+      ],
+      "clientRoles": {},
+      "groups": []
+    },
+    {
+      "username": "gestor@defesa.gov.br",
+      "enabled": true,
+      "totp": false,
+      "emailVerified": true,
+      "firstName": "Gestor",
+      "lastName": "Defesa",
+      "email": "gestor@defesa.gov.br",
+      "attributes": {
+        "locale": [
+          "pt-BR"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Gestor@123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "GESTOR"
+      ],
+      "clientRoles": {},
+      "groups": []
+    },
+    {
+      "username": "analista@defesa.gov.br",
+      "enabled": true,
+      "totp": false,
+      "emailVerified": true,
+      "firstName": "Analista",
+      "lastName": "Tecnico",
+      "email": "analista@defesa.gov.br",
+      "attributes": {
+        "locale": [
+          "pt-BR"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Analista@123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "ANALISTA"
+      ],
+      "clientRoles": {},
+      "groups": []
+    },
+    {
+      "username": "externo@eb.mil.br",
+      "enabled": true,
+      "totp": false,
+      "emailVerified": true,
+      "firstName": "Orgao Externo",
+      "lastName": "Exercito Brasileiro",
+      "email": "externo@eb.mil.br",
+      "attributes": {
+        "locale": [
+          "pt-BR"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Externo@123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "EXTERNO"
+      ],
+      "clientRoles": {},
+      "groups": []
     }
-  ]
+  ],
+  "groups": [],
+  "defaultRoles": [
+    "offline_access",
+    "uma_authorization",
+    "VIEWER"
+  ],
+  "requiredCredentials": [
+    "password"
+  ],
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA1",
+  "otpPolicyInitialCounter": 0,
+  "otpPolicyDigits": 6,
+  "otpPolicyLookAheadWindow": 1,
+  "otpPolicyPeriod": 30,
+  "smtpServer": {},
+  "eventsEnabled": true,
+  "eventsListeners": [
+    "jboss-logging"
+  ],
+  "enabledEventTypes": [
+    "LOGIN",
+    "LOGIN_ERROR",
+    "LOGOUT",
+    "LOGOUT_ERROR",
+    "UPDATE_PASSWORD",
+    "UPDATE_PASSWORD_ERROR"
+  ],
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": true,
+  "internationalizationEnabled": true,
+  "supportedLocales": [
+    "pt-BR",
+    "en"
+  ],
+  "defaultLocale": "pt-BR",
+  "browserSecurityHeaders": {
+    "contentSecurityPolicyReportOnly": "",
+    "xContentTypeOptions": "nosniff",
+    "xRobotsTag": "none",
+    "xFrameOptions": "SAMEORIGIN",
+    "contentSecurityPolicy": "frame-src 'self'; frame-ancestors 'self'; object-src 'none';",
+    "xXSSProtection": "1; mode=block",
+    "strictTransportSecurity": "max-age=31536000; includeSubDomains"
+  }
 }

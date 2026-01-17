@@ -165,7 +165,84 @@ public class TramitacaoService {
         }
     }
 
-    private TramitacaoDTO converterParaDTO(Tramitacao tramitacao) {
+    @Transactional
+    public Tramitacao iniciarAnalise(String tramitacaoId, String usuarioId) {
+        Tramitacao tramitacao = buscarPorIdValidandoDestinatario(tramitacaoId, usuarioId);
+
+        // Apenas tramitações RECEBIDAS podem entrar em análise
+        if (tramitacao.getStatus() != StatusTramitacao.RECEBIDO) {
+            throw new TramitacaoInvalidaException("A tramitação precisa estar RECEBIDA para iniciar análise. Status atual: " + tramitacao.getStatus());
+        }
+
+        tramitacao.setStatus(StatusTramitacao.EM_ANALISE);
+        tramitacao.setDataAtualizacao(LocalDateTime.now());
+
+        log.info("Análise iniciada na tramitação {} pelo usuário {}", tramitacaoId, usuarioId);
+        return tramitacaoRepository.save(tramitacao);
+    }
+
+    @Transactional
+    public Tramitacao solicitarParecer(String tramitacaoId, String usuarioId) {
+        Tramitacao tramitacao = buscarPorIdValidandoDestinatario(tramitacaoId, usuarioId);
+
+        // Só pode pedir parecer se já estiver em análise
+        if (tramitacao.getStatus() != StatusTramitacao.EM_ANALISE) {
+            throw new TramitacaoInvalidaException("A tramitação deve estar EM ANÁLISE para solicitar parecer.");
+        }
+
+        tramitacao.setStatus(StatusTramitacao.AGUARDANDO_PARECER);
+        tramitacao.setDataAtualizacao(LocalDateTime.now());
+
+        log.info("Tramitação {} aguardando parecer. Solicitante: {}", tramitacaoId, usuarioId);
+        return tramitacaoRepository.save(tramitacao);
+    }
+
+    @Transactional
+    public Tramitacao suspender(String tramitacaoId, String usuarioId) {
+        Tramitacao tramitacao = buscarPorIdValidandoDestinatario(tramitacaoId, usuarioId);
+
+        // Pode suspender se estiver em análise ou aguardando parecer
+        if (tramitacao.getStatus() != StatusTramitacao.EM_ANALISE &&
+                tramitacao.getStatus() != StatusTramitacao.AGUARDANDO_PARECER) {
+            throw new TramitacaoInvalidaException("Status inválido para suspensão: " + tramitacao.getStatus());
+        }
+
+        // Retorna para PENDENTE (funciona como "Backlog" ou "Inbox")
+        tramitacao.setStatus(StatusTramitacao.PENDENTE);
+        tramitacao.setDataAtualizacao(LocalDateTime.now());
+
+        log.info("Tramitação {} suspensa/devolvida à pendência pelo usuário {}", tramitacaoId, usuarioId);
+        return tramitacaoRepository.save(tramitacao);
+    }
+
+    @Transactional
+    public Tramitacao retomar(String tramitacaoId, String usuarioId) {
+        Tramitacao tramitacao = buscarPorIdValidandoDestinatario(tramitacaoId, usuarioId);
+
+        if (tramitacao.getStatus() != StatusTramitacao.PENDENTE) {
+            throw new TramitacaoInvalidaException("Apenas tramitações PENDENTES podem ser retomadas/recebidas novamente.");
+        }
+
+        // Retorna direto para EM_ANALISE, pulando o RECEBIDO se for retomada
+        tramitacao.setStatus(StatusTramitacao.EM_ANALISE);
+        tramitacao.setDataAtualizacao(LocalDateTime.now());
+
+        log.info("Tramitação {} retomada para análise pelo usuário {}", tramitacaoId, usuarioId);
+        return tramitacaoRepository.save(tramitacao);
+    }
+
+    private Tramitacao buscarPorIdValidandoDestinatario(String tramitacaoId, String usuarioId) {
+        Tramitacao tramitacao = tramitacaoRepository.findById(tramitacaoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Tramitação não encontrada"));
+
+        if (!tramitacao.getDestinatarioId().equals(usuarioId)) {
+            log.warn("Tentativa de alteração não autorizada. Tramitação: {}, Usuário: {}", tramitacaoId, usuarioId);
+            throw new TramitacaoInvalidaException("Usuário não é o destinatário desta tramitação.");
+        }
+        return tramitacao;
+    }
+
+    public TramitacaoDTO converterParaDTO(Tramitacao tramitacao) {
         return new TramitacaoDTO(
                 tramitacao.getId(),
                 tramitacao.getProcessoId(),

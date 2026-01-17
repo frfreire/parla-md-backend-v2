@@ -1,11 +1,217 @@
-# =========================================================================
-# PARLA-MD - DOCKER COMPOSE CORRIGIDO
-# =========================================================================
-# Correções aplicadas:
-# 1. RabbitMQ: Removida variável deprecated RABBITMQ_VM_MEMORY_HIGH_WATERMARK
-# 2. Keycloak: Removido -XX:+UseG1GC para evitar conflito de garbage collectors
-# Data: 2026-01-13
-# =========================================================================
+services:
+  # =========================================================================
+  # MONGODB - Banco de Dados da Aplicação
+  # =========================================================================
+  mongodb:
+    image: mongo:6.0
+    container_name: parlamd-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: parlamd
+    volumes:
+      - mongodb-data:/data/db
+      - mongodb-logs:/var/log/mongodb
+    networks:
+      - parlamd-data
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/parlamd --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # =========================================================================
+  # POSTGRESQL - Banco de Dados do Keycloak (IAM)
+  # =========================================================================
+  keycloak-postgres:
+    image: postgres:15
+    container_name: parlamd-keycloak-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: password
+    volumes:
+      - keycloak-postgres-data:/var/lib/postgresql/data
+    networks:
+      - parlamd-data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # =========================================================================
+  # RABBITMQ - Message Broker
+  # =========================================================================
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: parlamd-rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - parlamd-app
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # =========================================================================
+  # REDIS - Cache
+  # =========================================================================
+  redis:
+    image: redis:7.2-alpine
+    container_name: parlamd-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - parlamd-data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # =========================================================================
+  # KEYCLOAK - IAM Service
+  # =========================================================================
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0.7
+    container_name: parlamd-keycloak
+    restart: unless-stopped
+    environment:
+      # Conexão com Postgres
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: password
+      
+      # Credenciais Admin
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      
+      # Configurações HTTP/Hostname
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_LOG_LEVEL: INFO
+      
+      # Tunning JVM para evitar OOM no import
+      JAVA_OPTS_APPEND: "-Xms512m -Xmx1024m"
+    command:
+      - start-dev
+      - --import-realm
+    ports:
+      - "8180:8080" # Mapeamento Split Horizon (Externo 8180 -> Interno 8080)
+    volumes:
+      - ./docker/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
+    networks:
+      - parlamd-app
+      - parlamd-data
+    depends_on:
+      keycloak-postgres:
+        condition: service_healthy
+    healthcheck:
+      # Healthcheck via TCP para garantir que a porta está aberta
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080;echo -e \"GET /health/ready HTTP/1.1\r\nhost: http://localhost\r\nConnection: close\r\n\r\n\" >&3;grep \"HTTP/1.1 200 OK\" <&3"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+      start_period: 90s
+
+  # =========================================================================
+  # OLLAMA - AI Service
+  # =========================================================================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: parlamd-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    networks:
+      - parlamd-ai
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/version"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # =========================================================================
+  # BACKEND - Spring Boot
+  # =========================================================================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: parlamd-backend:latest
+    container_name: parlamd-backend
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      MONGODB_URI: mongodb://mongodb:27017/parlamd
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      OLLAMA_SERVER: http://ollama:11434
+      
+      # === SPLIT HORIZON FIX ===
+      # Token emitido externamente tem 'iss': localhost:8180
+      KEYCLOAK_ISSUER_URI: http://localhost:8180/realms/parlamd
+      # Backend busca chaves internamente na rede Docker (porta 8080 original)
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/parlamd/protocol/openid-connect/certs
+      
+      KEYCLOAK_AUTH_SERVER_URL: http://keycloak:8080
+      KEYCLOAK_REALM: parlamd
+      KEYCLOAK_CLIENT_ID: parla-md-client
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-RnMndotWYb52i2aNpIe2fQNb12kRUSxa}
+      
+      # Logs
+      LOGGING_LEVEL_ROOT: INFO
+      LOGGING_LEVEL_BR_GOV_MD_PARLA_MD_BACKEND: DEBUG
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY: DEBUG
+
+    ports:
+      - "8081:8081"
+    volumes:
+      - backend-logs:/app/logs
+      - backend-temp:/tmp
+    networks:
+      - parlamd-app
+      - parlamd-data
+      - parlamd-ai
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          memory: 1G
+
 networks:
   parlamd-app:
     driver: bridge
@@ -39,433 +245,3 @@ volumes:
   backend-temp:
     name: parlamd_backend_temp
     driver: local
-
-services:
-  # =========================================================================
-  # POSTGRESQL - Banco do Keycloak
-  # =========================================================================
-  keycloak-postgres:
-    image: postgres:15-alpine
-    container_name: parlamd-keycloak-postgres
-    environment:
-      POSTGRES_DB: keycloak
-      POSTGRES_USER: keycloak
-      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak_secure_2024}
-      PGDATA: /var/lib/postgresql/data/pgdata
-      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
-    volumes:
-      - keycloak-postgres-data:/var/lib/postgresql/data/pgdata
-    networks:
-      - parlamd-data
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    command: >
-      postgres
-      -c shared_buffers=128MB
-      -c effective_cache_size=256MB
-      -c work_mem=8MB
-      -c maintenance_work_mem=64MB
-      -c max_connections=100
-      -c log_min_duration_statement=-1
-      -c log_statement=none
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "5m"
-        max-file: "2"
-
-  # =========================================================================
-  # KEYCLOAK - Servidor de Autenticação OAuth2
-  # =========================================================================
-  keycloak:
-    image: quay.io/keycloak/keycloak:23.0.7
-    container_name: parlamd-keycloak
-    environment:
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://keycloak-postgres:5432/keycloak
-      KC_DB_USERNAME: keycloak
-      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak_secure_2024}
-      KC_DB_SCHEMA: public
-
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USER:-admin}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin_secure_2024}
-
-      KC_HOSTNAME_STRICT: false
-      KC_HOSTNAME_STRICT_HTTPS: false
-      KC_HTTP_ENABLED: true
-      KC_HEALTH_ENABLED: true
-      KC_METRICS_ENABLED: true
-      KC_PROXY: edge
-      KC_LOG_LEVEL: info
-
-      KC_CACHE: local
-      KC_TRANSACTION_XA_ENABLED: false
-
-      JAVA_OPTS_APPEND: >-
-        -Xms256m
-        -Xmx768m
-        -XX:MetaspaceSize=96M
-        -XX:MaxMetaspaceSize=256m
-        -XX:MaxGCPauseMillis=100
-        -Djava.net.preferIPv4Stack=true
-        -Dkeycloak.profile.feature.upload_scripts=enabled
-
-    command:
-      - start-dev
-      - --http-enabled=true
-      - --hostname-strict=false
-      - --health-enabled=true
-      - --import-realm
-
-    volumes:
-      - ./docker/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
-    ports:
-      - "8180:8080"
-    networks:
-      - parlamd-app
-      - parlamd-data
-    depends_on:
-      keycloak-postgres:
-        condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200 OK'"]
-      interval: 20s
-      timeout: 10s
-      retries: 10
-      start_period: 90s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  # =========================================================================
-  # MONGODB - Banco de Dados Principal
-  # =========================================================================
-  mongodb:
-    image: mongo:6.0
-    container_name: parlamd-mongodb
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-mongo_secure_2024}
-      MONGO_INITDB_DATABASE: parlamd
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb-data:/data/db
-      - mongodb-logs:/var/log/mongodb
-    networks:
-      - parlamd-data
-    deploy:
-      resources:
-        limits:
-          cpus: '2.0'
-          memory: 4G
-        reservations:
-          cpus: '1.0'
-          memory: 2G
-    command: >
-      mongod
-      --auth
-      --bind_ip_all
-      --wiredTigerCacheSizeGB 2
-      --wiredTigerCollectionBlockCompressor snappy
-      --logpath /var/log/mongodb/mongod.log
-      --logappend
-      --quiet
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "mongosh", "--authenticationDatabase", "admin", "-u", "${MONGO_ROOT_USER:-admin}", "-p", "${MONGO_ROOT_PASSWORD:-mongo_secure_2024}", "--eval", "db.adminCommand('ping')", "--quiet"]
-      interval: 15s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  # =========================================================================
-  # RABBITMQ - Message Queue (CORRIGIDO)
-  # =========================================================================
-  rabbitmq:
-    image: rabbitmq:3.13-management-alpine
-    container_name: parlamd-rabbitmq
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-parlamd}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-rabbit_secure_2024}
-      RABBITMQ_DEFAULT_VHOST: parlamd
-      RABBITMQ_DISK_FREE_LIMIT: 2GB
-      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: >-
-        -rabbit log_levels [{connection,warning},{default,info}]
-        +sbwt none
-        +sbwtdcpu none
-        +sbwtdio none
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
-    networks:
-      - parlamd-app
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 15s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  # =========================================================================
-  # REDIS - Cache
-  # =========================================================================
-  redis:
-    image: redis:7.2-alpine
-    container_name: parlamd-redis
-    command: >
-      redis-server
-      --requirepass ${REDIS_PASSWORD:-redis_secure_2024}
-      --maxmemory 1536mb
-      --maxmemory-policy allkeys-lru
-      --save 900 1
-      --save 300 10
-      --save 60 10000
-      --appendonly yes
-      --appendfsync everysec
-      --auto-aof-rewrite-percentage 100
-      --auto-aof-rewrite-min-size 64mb
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-    networks:
-      - parlamd-app
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 2G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD:-redis_secure_2024}", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "5m"
-        max-file: "2"
-
-  # =========================================================================
-  # OLLAMA - LLM AI Service
-  # =========================================================================
-  ollama:
-    image: ollama/ollama:latest
-    container_name: parlamd-ollama
-    environment:
-      OLLAMA_HOST: 0.0.0.0:11434
-      OLLAMA_KEEP_ALIVE: 24h
-      OLLAMA_NUM_PARALLEL: 2
-      OLLAMA_MAX_LOADED_MODELS: 1
-      OLLAMA_FLASH_ATTENTION: 1
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama-models:/root/.ollama
-    networks:
-      - parlamd-ai
-    deploy:
-      resources:
-        limits:
-          cpus: '4.0'
-          memory: 8G
-        reservations:
-          cpus: '2.0'
-          memory: 4G
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "2"
-
-  # =========================================================================
-  # BACKEND - Aplicação Spring Boot
-  # =========================================================================
-  parlamd-backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        BUILD_DATE: "2026-01-13"
-        VCS_REF: production
-    container_name: parlamd-backend
-    environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILE:-docker}
-
-      SPRING_DATA_MONGODB_URI: mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-mongo_secure_2024}@mongodb:27017/parlamd?authSource=admin&retryWrites=true&w=majority&serverSelectionTimeoutMS=5000
-      SPRING_DATA_MONGODB_AUTO_INDEX_CREATION: true
-
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-parlamd}
-      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-rabbit_secure_2024}
-      SPRING_RABBITMQ_VIRTUAL_HOST: parlamd
-      SPRING_RABBITMQ_CONNECTION_TIMEOUT: 30000
-      SPRING_RABBITMQ_REQUESTED_HEARTBEAT: 60
-
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
-      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secure_2024}
-      SPRING_DATA_REDIS_TIMEOUT: 5000
-      SPRING_DATA_REDIS_LETTUCE_POOL_MAX_ACTIVE: 20
-      SPRING_DATA_REDIS_LETTUCE_POOL_MAX_IDLE: 10
-      SPRING_DATA_REDIS_LETTUCE_POOL_MIN_IDLE: 5
-
-      APP_SECURITY_OAUTH2_ENABLED: ${OAUTH2_ENABLED:-true}
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/parlamd
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/parlamd/protocol/openid-connect/certs
-      KEYCLOAK_AUTH_SERVER_URL: http://keycloak:8080
-      KEYCLOAK_REALM: parlamd
-      KEYCLOAK_RESOURCE: parlamd-backend
-      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-parlamd-backend}
-      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-mudar-em-producao}
-
-      OLLAMA_API_URL: http://ollama:11434
-      OLLAMA_MODEL: llama3.2:3b
-      OLLAMA_TIMEOUT: 60000
-      OLLAMA_TEMPERATURE: 0.7
-
-      CACHE_LLM_TTL: 3600
-      CACHE_LLM_MAX_ENTRIES: 1000
-
-      CAMARA_API_URL: https://dadosabertos.camara.leg.br/api/v2
-      SENADO_API_URL: https://legis.senado.leg.br/dadosabertos
-
-      SPRING_MAIL_HOST: ${SMTP_HOST:-smtp.gmail.com}
-      SPRING_MAIL_PORT: ${SMTP_PORT:-587}
-      SPRING_MAIL_USERNAME: ${SMTP_USERNAME}
-      SPRING_MAIL_PASSWORD: ${SMTP_PASSWORD}
-      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: true
-      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: true
-
-      FIREBASE_SERVER_KEY: ${FIREBASE_SERVER_KEY}
-
-      CORS_ALLOWED_ORIGINS: ${FRONTEND_URL:-http://localhost:4200},${FRONTEND_URL_MOBILE:-http://localhost:3000}
-
-      JAVA_OPTS: >-
-        -Xms512m
-        -Xmx1536m
-        -XX:+UseG1GC
-        -XX:MaxGCPauseMillis=100
-        -XX:+UseStringDeduplication
-        -XX:MetaspaceSize=128m
-        -XX:MaxMetaspaceSize=256m
-        -XX:+HeapDumpOnOutOfMemoryError
-        -XX:HeapDumpPath=/app/logs
-        -Djava.net.preferIPv4Stack=true
-        -Dfile.encoding=UTF-8
-        -Duser.timezone=America/Sao_Paulo
-
-      LOGGING_LEVEL_ROOT: ${LOG_LEVEL_ROOT:-INFO}
-      LOGGING_LEVEL_BR_GOV_MD_PARLA_MD_BACKEND: ${LOG_LEVEL_APP:-DEBUG}
-      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY: ${LOG_LEVEL_SECURITY:-INFO}
-      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB: WARN
-      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_DATA_MONGODB: WARN
-      LOGGING_FILE_NAME: /app/logs/parla-md.log
-      LOGGING_FILE_MAX_SIZE: 10MB
-      LOGGING_FILE_MAX_HISTORY: 7
-
-      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,metrics,prometheus
-      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: when_authorized
-      MANAGEMENT_HEALTH_MONGO_ENABLED: true
-      MANAGEMENT_HEALTH_REDIS_ENABLED: true
-      MANAGEMENT_HEALTH_RABBITMQ_ENABLED: true
-
-    ports:
-      - "8081:8081"
-    volumes:
-      - backend-logs:/app/logs
-      - backend-temp:/tmp
-    networks:
-      - parlamd-app
-      - parlamd-data
-      - parlamd-ai
-    depends_on:
-      mongodb:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      ollama:
-        condition: service_healthy
-      keycloak:
-        condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          cpus: '2.0'
-          memory: 2G
-        reservations:
-          cpus: '1.0'
-          memory: 1G
-    restart: unless-stopped
-    healthcheck:
-      test: [ "CMD-SHELL", "curl -f http://localhost:8081/actuator/health || exit 1" ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 120s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
