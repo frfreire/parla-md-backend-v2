@@ -258,9 +258,6 @@ public class CamaraService {
         return proposicaoRepository.countBySiglaTipo(siglaTipo);
     }
 
-//    public long contarPorStatusTriagem(StatusTriagem status) {
-//        return proposicaoRepository.countByTriagemStatus(status);
-//    }
 
     // ==================== MÉTODOS PRIVADOS ====================
     private String construirEndpointProposicoes(Integer ano, Integer itens) {

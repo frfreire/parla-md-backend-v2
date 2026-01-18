@@ -3,8 +3,8 @@ package br.gov.md.parla_md_backend.controller;
 import br.gov.md.parla_md_backend.domain.Tramitacao;
 import br.gov.md.parla_md_backend.domain.dto.EncaminhamentoDTO;
 import br.gov.md.parla_md_backend.domain.dto.TramitacaoDTO;
-import br.gov.md.parla_md_backend.domain.enums.StatusTramitacao;
 import br.gov.md.parla_md_backend.service.TramitacaoService;
+import br.gov.md.parla_md_backend.util.ControllerUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -526,13 +526,7 @@ public class TramitacaoController {
         return ResponseEntity.ok(tramitacaoService.converterParaDTO(tramitacao));
     }
 
-    /**
-     * Extrai o ID do usuário a partir do UserDetails.
-     * Adaptar conforme implementação real do UserDetails no projeto.
-     */
     private String extrairUsuarioId(UserDetails userDetails) {
-        // Assumindo que o username é o ID do usuário
-        // Adaptar conforme a implementação real
-        return userDetails.getUsername();
+        return ControllerUtils.extrairUsuarioId(userDetails);
     }
 }

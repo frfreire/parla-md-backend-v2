@@ -91,9 +91,19 @@ public class VotoParlamentarService {
     private Votacao criarDadosVotacao(JSONObject dadosVotacao) {
         Votacao novaVotacao = new Votacao();
         novaVotacao.setId(dadosVotacao.getString("idVotacao"));
-        //TODO completar os demais campos da votação
-        // novaVotacao.setProposicao(...);
         novaVotacao.setDataHoraInicio(analisarDataHora(dadosVotacao.getString("dataHoraVotacao")));
+        if (dadosVotacao.has("descricao")) {
+            novaVotacao.setDescricao(dadosVotacao.getString("descricao"));
+        }
+        if (dadosVotacao.has("siglaOrgao")) {
+            novaVotacao.setSiglaOrgao(dadosVotacao.getString("siglaOrgao"));
+        }
+        if (dadosVotacao.has("uriProposicaoPrincipal")) {
+            novaVotacao.setUriProposicaoPrincipal(dadosVotacao.getString("uriProposicaoPrincipal"));
+        }
+        if (dadosVotacao.has("proposicaoId")) {
+            novaVotacao.setProposicaoId(dadosVotacao.getString("proposicaoId"));
+        }
 
         return votacaoRepository.save(novaVotacao);
     }
