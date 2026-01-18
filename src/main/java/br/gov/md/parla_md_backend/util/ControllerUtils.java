@@ -1,7 +1,10 @@
 package br.gov.md.parla_md_backend.util;
 
+import br.gov.md.parla_md_backend.domain.dto.UsuarioInfoDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -41,7 +44,25 @@ public class ControllerUtils {
         if (userDetails == null) {
             throw new IllegalArgumentException("UserDetails não pode ser null");
         }
-        return userDetails.getUsername();
+        if (userDetails instanceof JwtAuthenticationToken jwtAuth) {
+            Jwt jwt = jwtAuth.getToken();
+            String sub = jwt.getClaimAsString("sub");
+            if (sub != null && !sub.isEmpty()) {
+                return sub;
+            }
+        }
+        if (userDetails instanceof UsuarioInfoDTO usuarioInfo) {
+            String userId = usuarioInfo.getId();
+            if (userId != null && !userId.isEmpty()) {
+                return userId;
+            }
+        }
+        String username = userDetails.getUsername();
+        if (username != null && !username.isEmpty()) {
+            return username;
+        }
+
+        throw new IllegalArgumentException("Não foi possível extrair o ID do usuário do UserDetails fornecido");
     }
 
     /**
