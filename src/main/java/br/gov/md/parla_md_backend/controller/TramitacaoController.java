@@ -4,6 +4,7 @@ import br.gov.md.parla_md_backend.domain.Tramitacao;
 import br.gov.md.parla_md_backend.domain.dto.EncaminhamentoDTO;
 import br.gov.md.parla_md_backend.domain.dto.TramitacaoDTO;
 import br.gov.md.parla_md_backend.service.TramitacaoService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -19,6 +20,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/tramitacoes")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearer-jwt")
 public class TramitacaoController {
 
     private final TramitacaoService tramitacaoService;

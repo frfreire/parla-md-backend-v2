@@ -109,7 +109,7 @@ public class UsuarioService {
                 throw new RecursoNaoEncontradoException("Usuário não encontrado");
             }
 
-            KeycloakUserResponse kUser = users.get(0);
+            KeycloakUserResponse kUser = users.getFirst();
             List<String> roles = buscarRolesDoUsuario(kUser.id(), token);
 
             return converterParaDTO(kUser, roles);
@@ -141,7 +141,7 @@ public class UsuarioService {
                 throw new RecursoNaoEncontradoException("Usuário não encontrado");
             }
 
-            KeycloakUserResponse kUser = users.get(0);
+            KeycloakUserResponse kUser = users.getFirst();
             List<String> roles = buscarRolesDoUsuario(kUser.id(), token);
 
             return converterParaDTO(kUser, roles);

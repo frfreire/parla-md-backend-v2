@@ -33,7 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequestMapping("/api/dados-legislativos")
 @RequiredArgsConstructor
 @Tag(name = "Dados Legislativos", description = "Operações relacionadas a dados legislativos")
-@SecurityRequirement(name = "bearer-key")
+@SecurityRequirement(name = "bearer-jwt")
 public class DadosLegislativosController {
 
     private final CamaraService camaraService;

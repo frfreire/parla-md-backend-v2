@@ -1,10 +1,14 @@
 package br.gov.md.parla_md_backend.controller;
 
+import br.gov.md.parla_md_backend.domain.Proposicao;
 import br.gov.md.parla_md_backend.domain.dto.ProposicaoDTO;
 import br.gov.md.parla_md_backend.domain.dto.ProposicaoResumoDTO;
 import br.gov.md.parla_md_backend.domain.dto.ProcedimentoProposicaoDTO;
 import br.gov.md.parla_md_backend.domain.enums.StatusTriagem;
+import br.gov.md.parla_md_backend.exception.EntidadeNotFoundException;
+import br.gov.md.parla_md_backend.exception.ValidacaoException;
 import br.gov.md.parla_md_backend.service.CamaraService;
+import br.gov.md.parla_md_backend.service.ProposicaoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -17,11 +21,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Slf4j
@@ -29,10 +35,11 @@ import java.util.List;
 @RequestMapping("/api/proposicoes")
 @RequiredArgsConstructor
 @Tag(name = "Proposições", description = "Gestão de proposições legislativas da Câmara dos Deputados")
-@SecurityRequirement(name = "bearer-key")
+@SecurityRequirement(name = "bearer-jwt")
 public class ProposicaoController {
 
     private final CamaraService camaraService;
+    private final ProposicaoService proposicaoService;
 
     @PostMapping("/sincronizar")
     @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR')")
@@ -275,5 +282,137 @@ public class ProposicaoController {
         log.debug("Contando proposições do tipo: {}", siglaTipo);
         long count = camaraService.contarPorTipo(siglaTipo);
         return ResponseEntity.ok(count);
+    }
+
+    @GetMapping("/periodo")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR', 'ANALISTA', 'EXTERNO')")
+    @Operation(
+            summary = "Buscar proposições por período",
+            description = "Retorna proposições apresentadas entre duas datas específicas"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Datas inválidas", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Acesso negado", content = @Content)
+    })
+    public ResponseEntity<List<ProposicaoDTO>> buscarPorPeriodo(
+            @Parameter(description = "Data inicial (formato: yyyy-MM-dd)", required = true, example = "2024-01-01")
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio,
+            @Parameter(description = "Data final (formato: yyyy-MM-dd)", required = true, example = "2024-12-31")
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fim) {
+
+        log.debug("Buscando proposições entre {} e {}", inicio, fim);
+
+        if (inicio.isAfter(fim)) {
+            log.warn("Data inicial posterior à data final: {} > {}", inicio, fim);
+            return ResponseEntity.badRequest().build();
+        }
+
+        List<Proposicao> proposicoes = proposicaoService.buscarPorPeriodo(inicio, fim);
+
+        List<ProposicaoDTO> dtos = proposicoes.stream()
+                .map(ProposicaoDTO::fromEntity)
+                .toList();
+
+        log.debug("Retornadas {} proposições no período", dtos.size());
+
+        return ResponseEntity.ok(dtos);
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR')")
+    @Operation(
+            summary = "Atualizar proposição",
+            description = "Atualiza dados de uma proposição existente"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Proposição atualizada com sucesso"),
+            @ApiResponse(responseCode = "404", description = "Proposição não encontrada", content = @Content),
+            @ApiResponse(responseCode = "400", description = "Dados inválidos", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Acesso negado", content = @Content)
+    })
+    public ResponseEntity<ProposicaoDTO> atualizarProposicao(
+            @Parameter(description = "ID da proposição") @PathVariable String id,
+            @RequestBody ProposicaoDTO dto) {
+
+        log.info("Atualizando proposição: {}", id);
+
+        try {
+            Proposicao proposicao = dto.toEntity();
+
+            Proposicao atualizada = proposicaoService.atualizar(id, proposicao);
+
+            log.info("Proposição {} atualizada com sucesso", id);
+
+            return ResponseEntity.ok(ProposicaoDTO.fromEntity(atualizada));
+
+        } catch (EntidadeNotFoundException e) {
+            log.warn("Proposição não encontrada: {}", id);
+            return ResponseEntity.notFound().build();
+
+        } catch (ValidacaoException e) {
+            log.warn("Dados inválidos para atualização: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Excluir proposição",
+            description = "Remove permanentemente uma proposição do sistema (apenas ADMIN)"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Proposição excluída com sucesso"),
+            @ApiResponse(responseCode = "404", description = "Proposição não encontrada", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Acesso negado", content = @Content)
+    })
+    public ResponseEntity<Void> excluirProposicao(
+            @Parameter(description = "ID da proposição") @PathVariable String id) {
+
+        log.info("Excluindo proposição: {}", id);
+
+        try {
+            proposicaoService.excluir(id);
+
+            log.info("Proposição {} excluída com sucesso", id);
+
+            return ResponseEntity.noContent().build();
+
+        } catch (EntidadeNotFoundException e) {
+            log.warn("Proposição não encontrada: {}", id);
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PutMapping("/{id}/status-triagem")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR', 'ANALISTA')")
+    @Operation(
+            summary = "Atualizar status de triagem",
+            description = "Atualiza apenas o status de triagem de uma proposição"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Status atualizado com sucesso"),
+            @ApiResponse(responseCode = "404", description = "Proposição não encontrada", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Acesso negado", content = @Content)
+    })
+    public ResponseEntity<ProposicaoDTO> atualizarStatusTriagem(
+            @Parameter(description = "ID da proposição") @PathVariable String id,
+            @Parameter(description = "Novo status de triagem", required = true)
+            @RequestParam StatusTriagem status) {
+
+        log.info("Atualizando status de triagem da proposição {} para {}", id, status);
+
+        try {
+            Proposicao atualizada = proposicaoService.atualizarStatusTriagem(id, status);
+
+            log.info("Status de triagem atualizado - Proposição: {}, Novo status: {}", id, status);
+
+            return ResponseEntity.ok(ProposicaoDTO.fromEntity(atualizada));
+
+        } catch (EntidadeNotFoundException e) {
+            log.warn("Proposição não encontrada: {}", id);
+            return ResponseEntity.notFound().build();
+        }
     }
 }

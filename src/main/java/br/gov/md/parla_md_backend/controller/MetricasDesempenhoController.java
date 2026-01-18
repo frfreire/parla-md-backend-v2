@@ -23,7 +23,7 @@ import java.time.LocalDateTime;
 @RequestMapping("/api/metricas")
 @RequiredArgsConstructor
 @Tag(name = "Métricas e Dashboard", description = "Métricas de desempenho e dashboard do sistema")
-@SecurityRequirement(name = "bearer-key")
+@SecurityRequirement(name = "bearer-jwt")
 public class MetricasDesempenhoController {
 
     private final MetricasDesempenhoService metricasService;

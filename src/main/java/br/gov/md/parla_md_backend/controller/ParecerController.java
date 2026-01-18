@@ -8,6 +8,7 @@ import br.gov.md.parla_md_backend.domain.dto.SolicitarParecerDTO;
 import br.gov.md.parla_md_backend.exception.RecursoNaoEncontradoException;
 import br.gov.md.parla_md_backend.repository.IUsuarioRepository;
 import br.gov.md.parla_md_backend.service.ParecerService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,14 +29,12 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/pareceres")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearer-jwt")
 public class ParecerController {
 
     private final ParecerService parecerService;
     private final IUsuarioRepository usuarioRepository;
 
-    /**
-     * Solicita parecer de um setor
-     */
     @PostMapping("/solicitar")
     @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR')")
     public ResponseEntity<ParecerDTO> solicitarParecer(
@@ -50,9 +49,6 @@ public class ParecerController {
         return ResponseEntity.status(HttpStatus.CREATED).body(parecer);
     }
 
-    /**
-     * Emite parecer (analista)
-     */
     @PutMapping("/emitir")
     @PreAuthorize("hasAnyRole('ADMIN', 'ANALISTA')")
     public ResponseEntity<ParecerDTO> emitirParecer(
@@ -69,9 +65,6 @@ public class ParecerController {
         return ResponseEntity.ok(parecer);
     }
 
-    /**
-     * Aprova ou rejeita parecer (superior hierárquico)
-     */
     @PutMapping("/aprovar")
     @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR')")
     public ResponseEntity<ParecerDTO> aprovarParecer(
@@ -88,9 +81,6 @@ public class ParecerController {
         return ResponseEntity.ok(parecer);
     }
 
-    /**
-     * Busca parecer por ID
-     */
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR', 'ANALISTA')")
     public ResponseEntity<ParecerDTO> buscarPorId(@PathVariable String id) {
@@ -100,9 +90,6 @@ public class ParecerController {
         return ResponseEntity.ok(parecer);
     }
 
-    /**
-     * Busca pareceres de um processo
-     */
     @GetMapping("/processo/{processoId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR', 'ANALISTA')")
     public ResponseEntity<List<ParecerDTO>> buscarPorProcesso(@PathVariable String processoId) {
@@ -112,9 +99,6 @@ public class ParecerController {
         return ResponseEntity.ok(pareceres);
     }
 
-    /**
-     * Busca pareceres pendentes de emissão de um setor
-     */
     @GetMapping("/pendentes/setor/{setorId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR', 'ANALISTA')")
     public ResponseEntity<Page<ParecerDTO>> buscarPendentesPorSetor(
@@ -127,9 +111,6 @@ public class ParecerController {
         return ResponseEntity.ok(pareceres);
     }
 
-    /**
-     * Busca pareceres emitidos pendentes de aprovação
-     */
     @GetMapping("/pendentes/aprovacao")
     @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR')")
     public ResponseEntity<Page<ParecerDTO>> buscarPendentesAprovacao(
@@ -141,9 +122,6 @@ public class ParecerController {
         return ResponseEntity.ok(pareceres);
     }
 
-    /**
-     * Busca pareceres com prazo vencido
-     */
     @GetMapping("/prazo-vencido")
     @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR')")
     public ResponseEntity<List<ParecerDTO>> buscarComPrazoVencido() {
@@ -153,9 +131,6 @@ public class ParecerController {
         return ResponseEntity.ok(pareceres);
     }
 
-    /**
-     * Busca pareceres pendentes do usuário logado
-     */
     @GetMapping("/meus-pendentes")
     @PreAuthorize("hasAnyRole('ADMIN', 'ANALISTA')")
     public ResponseEntity<Page<ParecerDTO>> buscarMeusPendentes(
@@ -171,9 +146,6 @@ public class ParecerController {
         return ResponseEntity.ok(pareceres);
     }
 
-    /**
-     * Busca estatísticas de pareceres por processo
-     */
     @GetMapping("/estatisticas/processo/{processoId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR')")
     public ResponseEntity<EstatisticasParecerDTO> buscarEstatisticasPorProcesso(
@@ -214,9 +186,6 @@ public class ParecerController {
         return ResponseEntity.ok(estatisticas);
     }
 
-    /**
-     * Busca estatísticas gerais de pareceres do setor
-     */
     @GetMapping("/estatisticas/setor/{setorId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR')")
     public ResponseEntity<EstatisticasSetorDTO> buscarEstatisticasPorSetor(
@@ -224,7 +193,6 @@ public class ParecerController {
 
         log.debug("Buscando estatísticas do setor: {}", setorId);
 
-        // Buscar todos os pareceres do setor (sem paginação para estatísticas)
         Page<ParecerDTO> page = parecerService.buscarPendentesPorSetor(
                 setorId,
                 Pageable.unpaged()
@@ -255,32 +223,20 @@ public class ParecerController {
         return ResponseEntity.ok(estatisticas);
     }
 
-    /**
-     * Extrai o ID do usuário do UserDetails
-     */
     private String extrairUsuarioId(UserDetails userDetails) {
         return userDetails.getUsername();
     }
 
-    /**
-     * Busca o nome do usuário pelo ID
-     */
     private String buscarNomeUsuario(String usuarioId) {
         Usuario usuario = buscarUsuario(usuarioId);
         return usuario.getNome();
     }
 
-    /**
-     * Busca usuário completo
-     */
     private Usuario buscarUsuario(String usuarioId) {
         return usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado"));
     }
 
-    /**
-     * DTO para estatísticas de pareceres de um processo
-     */
     public record EstatisticasParecerDTO(
             long total,
             long pendentes,
@@ -290,9 +246,6 @@ public class ParecerController {
             long atendidoPrazo
     ) {}
 
-    /**
-     * DTO para estatísticas de pareceres de um setor
-     */
     public record EstatisticasSetorDTO(
             long totalPendentes,
             long prazoVencido,

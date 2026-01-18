@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class TriagemService {
 
-    private IProposicaoRepository propositionRepository;
+    private final IProposicaoRepository propositionRepository;
 
     @Autowired
     public TriagemService(IProposicaoRepository propositionRepository){
