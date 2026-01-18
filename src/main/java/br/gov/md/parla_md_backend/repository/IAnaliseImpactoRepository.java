@@ -18,7 +18,7 @@ import java.util.Optional;
  * afetam diferentes áreas estratégicas do Ministério da Defesa.
  */
 @Repository
-public interface IAnaliseImpactoRepository extends MongoRepository<AnaliseImpacto, String> {
+public interface IAnaliseImpactoRepository extends IAnaliseIARepository<AnaliseImpacto> {
 
     Optional<AnaliseImpacto> findByItemLegislativo_IdAndAreaImpacto_Id(
             String itemLegislativoId,
@@ -28,18 +28,6 @@ public interface IAnaliseImpactoRepository extends MongoRepository<AnaliseImpact
     Page<AnaliseImpacto> findAllByItemLegislativo_Id(String itemLegislativoId, Pageable pageable);
 
     Page<AnaliseImpacto> findAllByAreaImpacto_Id(String areaImpactoId, Pageable pageable);
-
-    List<AnaliseImpacto> findByDataAnaliseAfter(LocalDateTime data);
-
-    Page<AnaliseImpacto> findByDataAnaliseAfter(LocalDateTime data, Pageable pageable);
-
-    List<AnaliseImpacto> findByDataAnaliseBefore(LocalDateTime data);
-
-    Page<AnaliseImpacto> findAllByDataAnaliseBetween(
-            LocalDateTime inicio,
-            LocalDateTime fim,
-            Pageable pageable
-    );
 
     Page<AnaliseImpacto> findAllByNivelImpacto(String nivelImpacto, Pageable pageable);
 
@@ -79,35 +67,16 @@ public interface IAnaliseImpactoRepository extends MongoRepository<AnaliseImpact
             Pageable pageable
     );
 
-    Page<AnaliseImpacto> findAllBySucessoTrue(Pageable pageable);
-
-    Page<AnaliseImpacto> findAllBySucessoFalse(Pageable pageable);
-
     Page<AnaliseImpacto> findAllByAreaImpacto_IdAndSucessoTrue(
             String areaImpactoId,
             Pageable pageable
     );
 
-    Page<AnaliseImpacto> findAllByModeloVersao(String modeloVersao, Pageable pageable);
-
-    @Query("{ 'dataExpiracao': { $lt: ?0 } }")
-    List<AnaliseImpacto> findByDataExpiracaoBefore(LocalDateTime data);
-
-    void deleteByDataExpiracaoBefore(LocalDateTime data);
-
-    long countByNivelImpacto(String nivelImpacto);
-
-    long countByTipoImpacto(String tipoImpacto);
-
-    long countBySucessoTrue();
-
-    long countBySucessoFalse();
-
-    long countByAreaImpacto_Id(String areaImpactoId);
-
-    long countByItemLegislativo_Id(String itemLegislativoId);
-
-    long countByNivelImpactoAndTipoImpacto(String nivelImpacto, String tipoImpacto);
+    Page<AnaliseImpacto> findAllByDataAnaliseBetween(
+            LocalDateTime inicio,
+            LocalDateTime fim,
+            Pageable pageable
+    );
 
     @Query("{ 'dataAnalise': { $gte: ?0 }, 'sucesso': true }")
     Page<AnaliseImpacto> findAnalisesBemSucedsRecentes(LocalDateTime dataLimite, Pageable pageable);
@@ -124,6 +93,16 @@ public interface IAnaliseImpactoRepository extends MongoRepository<AnaliseImpact
             LocalDateTime inicio,
             LocalDateTime fim
     );
+
+    long countByNivelImpacto(String nivelImpacto);
+
+    long countByTipoImpacto(String tipoImpacto);
+
+    long countByAreaImpacto_Id(String areaImpactoId);
+
+    long countByItemLegislativo_Id(String itemLegislativoId);
+
+    long countByNivelImpactoAndTipoImpacto(String nivelImpacto, String tipoImpacto);
 
     boolean existsByItemLegislativo_IdAndAreaImpacto_Id(
             String itemLegislativoId,

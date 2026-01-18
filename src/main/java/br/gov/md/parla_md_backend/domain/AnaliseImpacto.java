@@ -1,5 +1,6 @@
 package br.gov.md.parla_md_backend.domain;
 
+import br.gov.md.parla_md_backend.domain.interfaces.AnaliseIAEntity;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -24,7 +25,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AnaliseImpacto {
+public class AnaliseImpacto implements AnaliseIAEntity {
 
     @Id
     private String id;
@@ -38,38 +39,24 @@ public class AnaliseImpacto {
     private AreaImpacto areaImpacto;
 
     private String nivelImpacto;
-
     private String tipoImpacto;
-
     private Double percentualImpacto;
-
     private String analiseDetalhada;
-
     private List<String> consequencias;
-
     private List<String> gruposAfetados;
-
     private List<String> riscos;
-
     private List<String> oportunidades;
-
     private String recomendacoes;
 
     @Indexed
     private LocalDateTime dataAnalise;
 
     private String modeloVersao;
-
     private String promptUtilizado;
-
     private String respostaCompleta;
-
     private Long tempoProcessamentoMs;
-
     private Boolean sucesso;
-
     private String mensagemErro;
-
     private LocalDateTime dataExpiracao;
 
     public boolean isImpactoAlto() {

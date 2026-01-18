@@ -1,18 +1,16 @@
 package br.gov.md.parla_md_backend.service;
 
-import br.gov.md.parla_md_backend.domain.dto.*;
-import br.gov.md.parla_md_backend.domain.Previsao;
 import br.gov.md.parla_md_backend.domain.ItemLegislativo;
-import br.gov.md.parla_md_backend.exception.ModeloNaoTreinadoException;
-import br.gov.md.parla_md_backend.exception.PrevisaoException;
+import br.gov.md.parla_md_backend.domain.Previsao;
+import br.gov.md.parla_md_backend.domain.dto.PrevisaoDTO;
+import br.gov.md.parla_md_backend.domain.dto.RespostaLlamaDTO;
+import br.gov.md.parla_md_backend.domain.dto.ResultadoPrevisaoIA;
+import br.gov.md.parla_md_backend.domain.dto.SolicitarPrevisaoDTO;
 import br.gov.md.parla_md_backend.exception.RecursoNaoEncontradoException;
 import br.gov.md.parla_md_backend.repository.IItemLegislativoRepository;
 import br.gov.md.parla_md_backend.repository.IPrevisaoRepository;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,168 +18,49 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
-public class PrevisaoService {
+public class PrevisaoService extends BaseIAService<Previsao, PrevisaoDTO, ResultadoPrevisaoIA, IPrevisaoRepository> {
 
-    private final LlamaService llamaService;
-    private final IPrevisaoRepository previsaoRepository;
     private final IItemLegislativoRepository itemLegislativoRepository;
-    private final ObjectMapper objectMapper;
 
-    @Value("${previsao.cache.ttl:86400}")
-    private int cacheTtlSegundos;
-
-    @Value("${previsao.modelo.versao:1.0.0}")
-    private String modeloVersao;
-
-    @Transactional
-    public PrevisaoDTO prever(SolicitarPrevisaoDTO request) {
-        long inicioMs = System.currentTimeMillis();
-
-        ItemLegislativo item = buscarItemLegislativo(request.getItemLegislativoId());
-
-        if (!request.isForcarNovaPrevisao()) {
-            Previsao previsaoCache = buscarPrevisaoRecente(item);
-            if (previsaoCache != null) {
-                log.info("Retornando previsão do cache: {}", previsaoCache.getId());
-                return PrevisaoDTO.from(previsaoCache);
-            }
-        }
-
-        try {
-            Previsao previsao = gerarNovaPrevisao(item, request.getTipoPrevisaoOrDefault(), inicioMs);
-            Previsao salva = previsaoRepository.save(previsao);
-
-            log.info("Previsão gerada: {} - Probabilidade: {}%",
-                    salva.getId(),
-                    salva.getProbabilidadeAprovacao() * 100);
-
-            return PrevisaoDTO.from(salva);
-
-        } catch (Exception e) {
-            long duracaoMs = System.currentTimeMillis() - inicioMs;
-            registrarFalha(item, request.getTipoPrevisaoOrDefault(), e, duracaoMs);
-
-            log.error("Erro ao gerar previsão: {}", e.getMessage(), e);
-            throw PrevisaoException.erroCalculo(e.getMessage(), e);
-        }
+    public PrevisaoService(
+            LlamaService llamaService,
+            IPrevisaoRepository previsaoRepository,
+            IItemLegislativoRepository itemLegislativoRepository) {
+        super(llamaService, previsaoRepository);
+        this.itemLegislativoRepository = itemLegislativoRepository;
     }
 
-    @Transactional
-    public List<PrevisaoDTO> preverLote(PrevisaoLoteDTO request) {
-        log.info("Processando lote de {} previsões", request.getItemLegislativoIds().size());
-
-        List<PrevisaoDTO> previsoes = new ArrayList<>();
-
-        for (String itemId : request.getItemLegislativoIds()) {
-            try {
-                SolicitarPrevisaoDTO solicitacao = SolicitarPrevisaoDTO.builder()
-                        .itemLegislativoId(itemId)
-                        .tipoPrevisao(request.getTipoPrevisaoOrDefault())
-                        .forcarNovaPrevisao(request.isForcarNovaPrevisao())
-                        .build();
-
-                PrevisaoDTO previsao = prever(solicitacao);
-                previsoes.add(previsao);
-
-            } catch (Exception e) {
-                log.error("Erro ao prever item {}: {}", itemId, e.getMessage());
-            }
-        }
-
-        log.info("Lote concluído: {} de {} previsões realizadas",
-                previsoes.size(),
-                request.getItemLegislativoIds().size());
-
-        return previsoes;
+    @Override
+    protected String getNomeAnalise() {
+        return "Previsão de Aprovação";
     }
 
-    @Cacheable(value = "previsoes", key = "#itemId")
-    public PrevisaoDTO buscarPrevisaoPorItem(String itemId) {
-        ItemLegislativo item = buscarItemLegislativo(itemId);
-
-        Previsao previsao = previsaoRepository
-                .findFirstByItemLegislativoOrderByDataPrevisaoDesc(item)
-                .orElseThrow(() -> new RecursoNaoEncontradoException(
-                        "Nenhuma previsão encontrada para o item: " + itemId));
-
-        return PrevisaoDTO.from(previsao);
+    @Override
+    protected String getNomeCacheEvict() {
+        return "previsoes";
     }
 
-    public Page<PrevisaoDTO> buscarPrevisoesRecentes(Pageable pageable) {
-        LocalDateTime limite = LocalDateTime.now().minusDays(30);
-
-        return previsaoRepository.findByDataPrevisaoAfter(limite, pageable)
-                .map(PrevisaoDTO::from);
+    @Override
+    protected Class<ResultadoPrevisaoIA> getResultadoClass() {
+        return ResultadoPrevisaoIA.class;
     }
 
-    public EstatisticasPrevisaoDTO calcularEstatisticas(int dias) {
-        LocalDateTime inicio = LocalDateTime.now().minusDays(dias);
-        List<Previsao> previsoes = previsaoRepository.findByDataPrevisaoAfter(inicio);
-
-        if (previsoes.isEmpty()) {
-            return estatisticasVazias(inicio, LocalDateTime.now());
-        }
-
-        return calcularEstatisticasDePrevisoes(previsoes, inicio);
+    @Override
+    protected PrevisaoDTO toDTO(Previsao entidade) {
+        return PrevisaoDTO.from(entidade);
     }
 
-    @Transactional
-    public void limparExpiradas() {
-        LocalDateTime agora = LocalDateTime.now();
-        List<Previsao> expiradas = previsaoRepository.buscarExpiradas(agora);
+    @Override
+    protected String construirPrompt(Object... parametros) {
+        ItemLegislativo item = (ItemLegislativo) parametros[0];
+        String tipoPrevisao = (String) parametros[1];
 
-        if (!expiradas.isEmpty()) {
-            previsaoRepository.deleteAll(expiradas);
-            log.info("Removidas {} previsões expiradas", expiradas.size());
-        }
-    }
-
-    private ItemLegislativo buscarItemLegislativo(String itemId) {
-        return itemLegislativoRepository.findById(itemId)
-                .orElseThrow(() -> new RecursoNaoEncontradoException(
-                        "Item legislativo não encontrado: " + itemId));
-    }
-
-    private Previsao buscarPrevisaoRecente(ItemLegislativo item) {
-        LocalDateTime limite = LocalDateTime.now().minusSeconds(cacheTtlSegundos);
-
-        return previsaoRepository
-                .findByItemLegislativo(item).stream()
-                .filter(p -> p.getDataPrevisao().isAfter(limite))
-                .filter(p -> p.getSucesso() != null && p.getSucesso())
-                .findFirst()
-                .orElse(null);
-    }
-
-    private Previsao gerarNovaPrevisao(
-            ItemLegislativo item,
-            String tipoPrevisao,
-            long inicioMs) {
-
-        String prompt = construirPrompt(item, tipoPrevisao);
-        String promptSistema = construirPromptSistema();
-
-        RespostaLlamaDTO resposta = llamaService.enviarRequisicao(
-                prompt,
-                promptSistema,
-                true
-        );
-
-        ResultadoPrevisaoIA resultado = parsearResposta(resposta);
-
-        long duracaoMs = System.currentTimeMillis() - inicioMs;
-
-        return construirPrevisao(item, tipoPrevisao, resultado, resposta, duracaoMs);
-    }
-
-    private String construirPrompt(ItemLegislativo item, String tipoPrevisao) {
         return String.format("""
             Analise a seguinte proposição legislativa e preveja a probabilidade de aprovação:
             
@@ -206,7 +85,8 @@ public class PrevisaoService {
         );
     }
 
-    private String construirPromptSistema() {
+    @Override
+    protected String construirPromptSistema() {
         return """
             Você é um especialista em análise legislativa do Congresso Nacional Brasileiro.
             Sua tarefa é prever a probabilidade de aprovação de proposições com base em:
@@ -220,21 +100,11 @@ public class PrevisaoService {
             """;
     }
 
-    private ResultadoPrevisaoIA parsearResposta(RespostaLlamaDTO resposta) {
-        try {
-            return llamaService.extrairJson(resposta, ResultadoPrevisaoIA.class);
-        } catch (Exception e) {
-            log.error("Erro ao parsear resposta do Llama: {}", e.getMessage());
-            throw PrevisaoException.erroCalculo("Resposta em formato inválido", e);
-        }
-    }
-
-    private Previsao construirPrevisao(
-            ItemLegislativo item,
-            String tipoPrevisao,
-            ResultadoPrevisaoIA resultado,
-            RespostaLlamaDTO resposta,
-            long duracaoMs) {
+    @Override
+    protected Previsao construirEntidade(ResultadoPrevisaoIA resultado, RespostaLlamaDTO resposta, long duracaoMs, Object... parametros) {
+        ItemLegislativo item = (ItemLegislativo) parametros[0];
+        String tipoPrevisao = (String) parametros[1];
+        LocalDateTime agora = LocalDateTime.now();
 
         return Previsao.builder()
                 .itemLegislativo(item)
@@ -244,117 +114,153 @@ public class PrevisaoService {
                 .justificativa(resultado.justificativa())
                 .fatoresPositivos(resultado.fatoresPositivos())
                 .fatoresNegativos(resultado.fatoresNegativos())
-                .dataPrevisao(LocalDateTime.now())
+                .dataPrevisao(agora)
                 .modeloVersao(modeloVersao)
                 .promptUtilizado(resposta.getMessage().getContent())
                 .respostaCompleta(resposta.getMessage().getContent())
                 .tempoProcessamentoMs(duracaoMs)
                 .sucesso(true)
-                .dataExpiracao(LocalDateTime.now().plusSeconds(cacheTtlSegundos))
+                .dataExpiracao(calcularDataExpiracao())
                 .build();
     }
 
-    private void registrarFalha(
-            ItemLegislativo item,
-            String tipoPrevisao,
-            Exception erro,
-            long duracaoMs) {
+    @Override
+    protected Previsao construirEntidadeFalha(Exception erro, long duracaoMs, Object... parametros) {
+        ItemLegislativo item = (ItemLegislativo) parametros[0];
+        String tipoPrevisao = (String) parametros[1];
+        LocalDateTime agora = LocalDateTime.now();
 
-        Previsao previsaoFalha = Previsao.builder()
+        return Previsao.builder()
                 .itemLegislativo(item)
                 .tipoPrevisao(tipoPrevisao)
-                .dataPrevisao(LocalDateTime.now())
+                .dataPrevisao(agora)
                 .modeloVersao(modeloVersao)
                 .tempoProcessamentoMs(duracaoMs)
                 .sucesso(false)
                 .mensagemErro(erro.getMessage())
-                .dataExpiracao(LocalDateTime.now().plusSeconds(cacheTtlSegundos))
-                .build();
-
-        previsaoRepository.save(previsaoFalha);
-    }
-
-    private EstatisticasPrevisaoDTO estatisticasVazias(LocalDateTime inicio, LocalDateTime fim) {
-        return EstatisticasPrevisaoDTO.builder()
-                .totalPrevisoes(0L)
-                .previsoesComSucesso(0L)
-                .previsoesFalhas(0L)
-                .taxaSucesso(0.0)
-                .periodoInicio(inicio)
-                .periodoFim(fim)
+                .dataExpiracao(calcularDataExpiracao())
                 .build();
     }
 
-    private EstatisticasPrevisaoDTO calcularEstatisticasDePrevisoes(
-            List<Previsao> previsoes,
-            LocalDateTime inicio) {
+    @Override
+    protected Optional<Previsao> buscarCacheRecente(Object... parametros) {
+        ItemLegislativo item = (ItemLegislativo) parametros[0];
 
-        long total = previsoes.size();
-        long sucesso = previsoes.stream().filter(p -> p.getSucesso() != null && p.getSucesso()).count();
-        long falhas = total - sucesso;
-
-        List<Previsao> sucessos = previsoes.stream()
-                .filter(p -> p.getSucesso() != null && p.getSucesso())
-                .toList();
-
-        return EstatisticasPrevisaoDTO.builder()
-                .totalPrevisoes(total)
-                .previsoesComSucesso(sucesso)
-                .previsoesFalhas(falhas)
-                .taxaSucesso(total > 0 ? (double) sucesso / total : 0.0)
-                .probabilidadeMedia(calcularMedia(sucessos, Previsao::getProbabilidadeAprovacao))
-                .confiancaMedia(calcularMedia(sucessos, Previsao::getConfianca))
-                .tempoMedioMs(calcularMediaLong(previsoes, Previsao::getTempoProcessamentoMs))
-                .tempoMinimoMs(calcularMinimo(previsoes, Previsao::getTempoProcessamentoMs))
-                .tempoMaximoMs(calcularMaximo(previsoes, Previsao::getTempoProcessamentoMs))
-                .periodoInicio(inicio)
-                .periodoFim(LocalDateTime.now())
-                .previsoesMuitoProvaveis(contarPorClassificacao(sucessos, "MUITO_PROVAVEL"))
-                .previsoesProvaveis(contarPorClassificacao(sucessos, "PROVAVEL"))
-                .previsoesImprovaveis(contarPorClassificacao(sucessos, "IMPROVAVEL"))
-                .previsoesMuitoImprovaveis(contarPorClassificacao(sucessos, "MUITO_IMPROVAVEL"))
-                .build();
+        return repository.findByItemLegislativo(item).stream()
+                .filter(this::isCacheValido)
+                .findFirst();
     }
 
-    private Double calcularMedia(List<Previsao> previsoes, java.util.function.ToDoubleFunction<Previsao> extractor) {
-        return previsoes.stream()
-                .mapToDouble(extractor)
-                .average()
-                .orElse(0.0);
+    @Transactional
+    public PrevisaoDTO prever(SolicitarPrevisaoDTO request) {
+        ItemLegislativo item = buscarItemLegislativo(request.getItemLegislativoId());
+        String tipoPrevisao = request.getTipoPrevisao() != null ? request.getTipoPrevisao() : "GERAL";
+
+        Previsao previsao = processarComCache(request.isForcarNovaPrevisao(), item, tipoPrevisao);
+
+        return toDTO(previsao);
     }
 
-    private Long calcularMediaLong(List<Previsao> previsoes, java.util.function.ToLongFunction<Previsao> extractor) {
-        return (long) previsoes.stream()
-                .mapToLong(extractor)
-                .average()
-                .orElse(0.0);
+    @Transactional(readOnly = true)
+    @Cacheable(value = "previsoes", key = "#itemId")
+    public PrevisaoDTO buscarPorItem(String itemId) {
+        ItemLegislativo item = buscarItemLegislativo(itemId);
+
+        Previsao previsao = repository.findFirstByItemLegislativoOrderByDataPrevisaoDesc(item)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Nenhuma previsão encontrada para item: " + itemId));
+
+        return toDTO(previsao);
     }
 
-    private Long calcularMinimo(List<Previsao> previsoes, java.util.function.ToLongFunction<Previsao> extractor) {
-        return previsoes.stream()
-                .mapToLong(extractor)
-                .min()
-                .orElse(0L);
+    @Transactional(readOnly = true)
+    public Page<PrevisaoDTO> buscarTodasPorItem(String itemId, Pageable pageable) {
+        ItemLegislativo item = buscarItemLegislativo(itemId);
+        Page<Previsao> previsoes = repository.findByItemLegislativo(item, pageable);
+        return previsoes.map(this::toDTO);
     }
 
-    private Long calcularMaximo(List<Previsao> previsoes, java.util.function.ToLongFunction<Previsao> extractor) {
-        return previsoes.stream()
-                .mapToLong(extractor)
-                .max()
-                .orElse(0L);
+    @Transactional(readOnly = true)
+    public List<PrevisaoDTO> buscarTodasPorItemLista(String itemId) {
+        ItemLegislativo item = buscarItemLegislativo(itemId);
+        List<Previsao> previsoes = repository.findByItemLegislativo(item);
+        return previsoes.stream().map(this::toDTO).collect(Collectors.toList());
     }
 
-    private Long contarPorClassificacao(List<Previsao> previsoes, String classificacao) {
-        return previsoes.stream()
-                .filter(p -> classificacao.equals(p.getClassificacao()))
-                .count();
+    @Transactional(readOnly = true)
+    public List<PrevisaoDTO> buscarPorTipo(String tipoPrevisao) {
+        List<Previsao> previsoes = repository.findByTipoPrevisao(tipoPrevisao);
+        return previsoes.stream().map(this::toDTO).collect(Collectors.toList());
     }
 
-    private record ResultadoPrevisaoIA(
-            double probabilidade,
-            double confianca,
-            String justificativa,
-            String fatoresPositivos,
-            String fatoresNegativos
-    ) {}
+    @Transactional(readOnly = true)
+    public List<PrevisaoDTO> buscarPorSucesso(Boolean sucesso) {
+        List<Previsao> previsoes = repository.findBySucesso(sucesso);
+        return previsoes.stream().map(this::toDTO).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<PrevisaoDTO> buscarAposData(LocalDateTime data) {
+        List<Previsao> previsoes = repository.findByDataPrevisaoAfter(data);
+        return previsoes.stream().map(this::toDTO).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<PrevisaoDTO> buscarAposDataPaginado(LocalDateTime data, Pageable pageable) {
+        Page<Previsao> previsoes = repository.findByDataPrevisaoAfter(data, pageable);
+        return previsoes.map(this::toDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PrevisaoDTO> buscarEntreDatas(LocalDateTime inicio, LocalDateTime fim) {
+        List<Previsao> previsoes = repository.findByDataPrevisaoBetween(inicio, fim);
+        return previsoes.stream().map(this::toDTO).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<PrevisaoDTO> buscarPorProbabilidadeMinima(Double probabilidadeMinima) {
+        List<Previsao> previsoes = repository.buscarComProbabilidadeMinima(probabilidadeMinima);
+        return previsoes.stream().map(this::toDTO).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<PrevisaoDTO> buscarPorFaixaProbabilidade(Double min, Double max) {
+        List<Previsao> previsoes = repository.buscarPorFaixaProbabilidade(min, max);
+        return previsoes.stream().map(this::toDTO).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<PrevisaoDTO> buscarPorConfiancaMinima(Double confiancaMinima) {
+        List<Previsao> previsoes = repository.buscarComConfiancaMinima(confiancaMinima);
+        return previsoes.stream().map(this::toDTO).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public long contarPorTipo(String tipoPrevisao) {
+        return repository.countByTipoPrevisao(tipoPrevisao);
+    }
+
+    @Transactional(readOnly = true)
+    public long contarPorSucesso(Boolean sucesso) {
+        return repository.countBySucesso(sucesso);
+    }
+
+    @Transactional(readOnly = true)
+    public long contarAposData(LocalDateTime data) {
+        return repository.countByDataPrevisaoAfter(data);
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "previsoes", allEntries = true)
+    public void limparExpiradas() {
+        super.limparExpiradas();
+    }
+
+    private ItemLegislativo buscarItemLegislativo(String itemId) {
+        return itemLegislativoRepository.findById(itemId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Item legislativo não encontrado: " + itemId));
+    }
+
 }

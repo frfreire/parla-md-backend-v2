@@ -9,9 +9,7 @@ import br.gov.md.parla_md_backend.exception.RecursoNaoEncontradoException;
 import br.gov.md.parla_md_backend.repository.IAnaliseImpactoRepository;
 import br.gov.md.parla_md_backend.repository.IAreaImpactoRepository;
 import br.gov.md.parla_md_backend.repository.IItemLegislativoRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -20,333 +18,51 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
-public class AnaliseImpactoService {
+public class AnaliseImpactoService extends BaseIAService<AnaliseImpacto, AnaliseImpactoDTO, ResultadoAnaliseImpactoIA, IAnaliseImpactoRepository> {
 
-    private final LlamaService llamaService;
-    private final IAnaliseImpactoRepository analiseRepository;
     private final IAreaImpactoRepository areaRepository;
     private final IItemLegislativoRepository itemLegislativoRepository;
-    private final AreaImpactoService areaImpactoService;
 
-    @Value("${analise.cache.ttl:86400}")
-    private int cacheTtlSegundos;
-
-    @Value("${analise.modelo.versao:1.0.0}")
-    private String modeloVersao;
-
-    @Transactional
-    public List<AnaliseImpactoDTO> analisar(SolicitarAnaliseImpactoDTO request) {
-        ItemLegislativo item = buscarItemLegislativo(request.getItemLegislativoId());
-        List<AreaImpacto> areasParaAnalisar = determinarAreas(request);
-
-        if (areasParaAnalisar.isEmpty()) {
-            throw new AnaliseImpactoException("Nenhuma área de impacto disponível para análise");
-        }
-
-        List<AnaliseImpactoDTO> analises = new ArrayList<>();
-
-        for (AreaImpacto area : areasParaAnalisar) {
-            try {
-                AnaliseImpactoDTO analise = processarAnaliseParaArea(item, area, request.isForcarNovaAnalise());
-                analises.add(analise);
-            } catch (Exception e) {
-                log.error("Erro ao analisar impacto na área {}: {}", area.getNome(), e.getMessage());
-            }
-        }
-
-        return analises;
+    public AnaliseImpactoService(
+            LlamaService llamaService,
+            IAnaliseImpactoRepository analiseRepository,
+            IAreaImpactoRepository areaRepository,
+            IItemLegislativoRepository itemLegislativoRepository) {
+        super(llamaService, analiseRepository);
+        this.areaRepository = areaRepository;
+        this.itemLegislativoRepository = itemLegislativoRepository;
     }
 
-    @Transactional(readOnly = true)
-    @Cacheable(value = "analises-impacto", key = "#itemId + '-' + #areaId")
-    public AnaliseImpactoDTO buscarPorItemEArea(String itemId, String areaId) {
-        AnaliseImpacto analise = analiseRepository
-                .findByItemLegislativo_IdAndAreaImpacto_Id(itemId, areaId)
-                .orElseThrow(() -> new RecursoNaoEncontradoException(
-                        "Análise não encontrada para item " + itemId + " e área " + areaId));
-
-        return AnaliseImpactoDTO.from(analise);
+    @Override
+    protected String getNomeAnalise() {
+        return "Análise de Impacto";
     }
 
-    @Transactional(readOnly = true)
-    public Page<AnaliseImpactoDTO> buscarPorItem(String itemId, Pageable pageable) {
-        Page<AnaliseImpacto> analises = analiseRepository.findAllByItemLegislativo_Id(itemId, pageable);
-        return analises.map(AnaliseImpactoDTO::from);
+    @Override
+    protected String getNomeCacheEvict() {
+        return "analises-impacto";
     }
 
-    @Transactional(readOnly = true)
-    public Page<AnaliseImpactoDTO> buscarPorArea(String areaId, Pageable pageable) {
-        Page<AnaliseImpacto> analises = analiseRepository.findAllByAreaImpacto_Id(areaId, pageable);
-        return analises.map(AnaliseImpactoDTO::from);
+    @Override
+    protected Class<ResultadoAnaliseImpactoIA> getResultadoClass() {
+        return ResultadoAnaliseImpactoIA.class;
     }
 
-    @Transactional(readOnly = true)
-    public Page<AnaliseImpactoDTO> buscarPorNivelImpacto(String nivelImpacto, Pageable pageable) {
-        Page<AnaliseImpacto> analises = analiseRepository.findAllByNivelImpacto(nivelImpacto, pageable);
-        return analises.map(AnaliseImpactoDTO::from);
+    @Override
+    protected AnaliseImpactoDTO toDTO(AnaliseImpacto entidade) {
+        return AnaliseImpactoDTO.from(entidade);
     }
 
-    @Transactional(readOnly = true)
-    public Page<AnaliseImpactoDTO> buscarAltoImpacto(Pageable pageable) {
-        Page<AnaliseImpacto> analises = analiseRepository.findAllByNivelImpactoAlto(pageable);
-        return analises.map(AnaliseImpactoDTO::from);
-    }
+    @Override
+    protected String construirPrompt(Object... parametros) {
+        ItemLegislativo item = (ItemLegislativo) parametros[0];
+        AreaImpacto area = (AreaImpacto) parametros[1];
 
-    @Transactional(readOnly = true)
-    public Page<AnaliseImpactoDTO> buscarMedioImpacto(Pageable pageable) {
-        Page<AnaliseImpacto> analises = analiseRepository.findAllByNivelImpactoMedio(pageable);
-        return analises.map(AnaliseImpactoDTO::from);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<AnaliseImpactoDTO> buscarBaixoImpacto(Pageable pageable) {
-        Page<AnaliseImpacto> analises = analiseRepository.findAllByNivelImpactoBaixo(pageable);
-        return analises.map(AnaliseImpactoDTO::from);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<AnaliseImpactoDTO> buscarPorTipoImpacto(String tipoImpacto, Pageable pageable) {
-        Page<AnaliseImpacto> analises = analiseRepository.findAllByTipoImpacto(tipoImpacto, pageable);
-        return analises.map(AnaliseImpactoDTO::from);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<AnaliseImpactoDTO> buscarImpactoNegativo(Pageable pageable) {
-        Page<AnaliseImpacto> analises = analiseRepository.findAllByTipoImpactoNegativo(pageable);
-        return analises.map(AnaliseImpactoDTO::from);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<AnaliseImpactoDTO> buscarImpactoPositivo(Pageable pageable) {
-        Page<AnaliseImpacto> analises = analiseRepository.findAllByTipoImpactoPositivo(pageable);
-        return analises.map(AnaliseImpactoDTO::from);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<AnaliseImpactoDTO> buscarPorNivelETipo(String nivelImpacto, String tipoImpacto, Pageable pageable) {
-        Page<AnaliseImpacto> analises = analiseRepository
-                .findAllByNivelImpactoAndTipoImpacto(nivelImpacto, tipoImpacto, pageable);
-        return analises.map(AnaliseImpactoDTO::from);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<AnaliseImpactoDTO> buscarAnalisesCriticas(Pageable pageable) {
-        Page<AnaliseImpacto> analises = analiseRepository.findAnalisesCriticas(pageable);
-        return analises.map(AnaliseImpactoDTO::from);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<AnaliseImpactoDTO> buscarAltoImpactoNegativo(Pageable pageable) {
-        Page<AnaliseImpacto> analises = analiseRepository.findAllByAltoImpactoNegativo(pageable);
-        return analises.map(AnaliseImpactoDTO::from);
-    }
-
-    @Transactional(readOnly = true)
-    public List<AnaliseImpactoDTO> buscarPorPercentualMinimo(Double percentualMinimo) {
-        List<AnaliseImpacto> analises = analiseRepository
-                .findByPercentualImpactoGreaterThanEqual(percentualMinimo);
-        return analises.stream()
-                .map(AnaliseImpactoDTO::from)
-                .collect(Collectors.toList());
-    }
-
-    @Transactional(readOnly = true)
-    public Page<AnaliseImpactoDTO> buscarPorPercentualEntre(Double min, Double max, Pageable pageable) {
-        Page<AnaliseImpacto> analises = analiseRepository
-                .findAllByPercentualImpactoBetween(min, max, pageable);
-        return analises.map(AnaliseImpactoDTO::from);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<AnaliseImpactoDTO> buscarBemSucedidas(Pageable pageable) {
-        Page<AnaliseImpacto> analises = analiseRepository.findAllBySucessoTrue(pageable);
-        return analises.map(AnaliseImpactoDTO::from);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<AnaliseImpactoDTO> buscarFalhas(Pageable pageable) {
-        Page<AnaliseImpacto> analises = analiseRepository.findAllBySucessoFalse(pageable);
-        return analises.map(AnaliseImpactoDTO::from);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<AnaliseImpactoDTO> buscarBemSucebidasPorArea(String areaId, Pageable pageable) {
-        Page<AnaliseImpacto> analises = analiseRepository
-                .findAllByAreaImpacto_IdAndSucessoTrue(areaId, pageable);
-        return analises.map(AnaliseImpactoDTO::from);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<AnaliseImpactoDTO> buscarPorModeloVersao(String modeloVersao, Pageable pageable) {
-        Page<AnaliseImpacto> analises = analiseRepository.findAllByModeloVersao(modeloVersao, pageable);
-        return analises.map(AnaliseImpactoDTO::from);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<AnaliseImpactoDTO> buscarRecentes(Pageable pageable) {
-        LocalDateTime limite = LocalDateTime.now().minusDays(30);
-        Page<AnaliseImpacto> analises = analiseRepository.findByDataAnaliseAfter(limite, pageable);
-        return analises.map(AnaliseImpactoDTO::from);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<AnaliseImpactoDTO> buscarRecentesBemSucedidas(Pageable pageable) {
-        LocalDateTime limite = LocalDateTime.now().minusDays(30);
-        Page<AnaliseImpacto> analises = analiseRepository.findAnalisesBemSucedsRecentes(limite, pageable);
-        return analises.map(AnaliseImpactoDTO::from);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<AnaliseImpactoDTO> buscarAltoImpactoRecentes(Pageable pageable) {
-        LocalDateTime limite = LocalDateTime.now().minusDays(30);
-        Page<AnaliseImpacto> analises = analiseRepository.findAnaliseAltoImpactoRecentes(limite, pageable);
-        return analises.map(AnaliseImpactoDTO::from);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<AnaliseImpactoDTO> buscarPorPeriodo(LocalDateTime inicio, LocalDateTime fim, Pageable pageable) {
-        Page<AnaliseImpacto> analises = analiseRepository
-                .findAllByDataAnaliseBetween(inicio, fim, pageable);
-        return analises.map(AnaliseImpactoDTO::from);
-    }
-
-    @Transactional(readOnly = true)
-    public List<AnaliseImpactoDTO> buscarPorAreaNoPeriodo(String areaId, LocalDateTime inicio, LocalDateTime fim) {
-        List<AnaliseImpacto> analises = analiseRepository.findByAreaNoPeriodo(areaId, inicio, fim);
-        return analises.stream()
-                .map(AnaliseImpactoDTO::from)
-                .collect(Collectors.toList());
-    }
-
-    @Transactional(readOnly = true)
-    public EstatisticasImpactoDTO calcularEstatisticas(int dias) {
-        LocalDateTime inicio = LocalDateTime.now().minusDays(dias);
-        List<AnaliseImpacto> analises = analiseRepository.findByDataAnaliseAfter(inicio);
-
-        if (analises.isEmpty()) {
-            return construirEstatisticasVazias(inicio, LocalDateTime.now());
-        }
-
-        return calcularEstatisticasDeAnalises(analises, inicio);
-    }
-
-    @Transactional
-    @CacheEvict(value = "analises-impacto", allEntries = true)
-    public void limparExpiradas() {
-        LocalDateTime agora = LocalDateTime.now();
-        List<AnaliseImpacto> expiradas = analiseRepository.findByDataExpiracaoBefore(agora);
-
-        if (!expiradas.isEmpty()) {
-            analiseRepository.deleteAll(expiradas);
-            log.info("Removidas {} análises expiradas", expiradas.size());
-        }
-    }
-
-    @Transactional(readOnly = true)
-    public long contarPorNivel(String nivelImpacto) {
-        return analiseRepository.countByNivelImpacto(nivelImpacto);
-    }
-
-    @Transactional(readOnly = true)
-    public long contarPorTipo(String tipoImpacto) {
-        return analiseRepository.countByTipoImpacto(tipoImpacto);
-    }
-
-    @Transactional(readOnly = true)
-    public long contarBemSucedidas() {
-        return analiseRepository.countBySucessoTrue();
-    }
-
-    @Transactional(readOnly = true)
-    public long contarFalhas() {
-        return analiseRepository.countBySucessoFalse();
-    }
-
-    @Transactional(readOnly = true)
-    public long contarPorArea(String areaId) {
-        return analiseRepository.countByAreaImpacto_Id(areaId);
-    }
-
-    @Transactional(readOnly = true)
-    public long contarPorItem(String itemId) {
-        return analiseRepository.countByItemLegislativo_Id(itemId);
-    }
-
-    @Transactional(readOnly = true)
-    public long contarPorNivelETipo(String nivelImpacto, String tipoImpacto) {
-        return analiseRepository.countByNivelImpactoAndTipoImpacto(nivelImpacto, tipoImpacto);
-    }
-
-    @Transactional(readOnly = true)
-    public boolean existeAnalisePara(String itemId, String areaId) {
-        return analiseRepository.existsByItemLegislativo_IdAndAreaImpacto_Id(itemId, areaId);
-    }
-
-    @Transactional(readOnly = true)
-    public boolean existeAnaliseBemSucedidaPara(String itemId, String areaId) {
-        return analiseRepository.existsByItemLegislativo_IdAndAreaImpacto_IdAndSucessoTrue(itemId, areaId);
-    }
-
-    private AnaliseImpactoDTO processarAnaliseParaArea(ItemLegislativo item, AreaImpacto area, boolean forcarNova) {
-        if (!forcarNova) {
-            AnaliseImpacto analiseCache = buscarAnaliseRecente(item, area);
-            if (analiseCache != null) {
-                log.info("Retornando análise do cache: {} - {}", item.getId(), area.getNome());
-                return AnaliseImpactoDTO.from(analiseCache);
-            }
-        }
-
-        return gerarNovaAnalise(item, area);
-    }
-
-    private AnaliseImpacto buscarAnaliseRecente(ItemLegislativo item, AreaImpacto area) {
-        LocalDateTime limite = LocalDateTime.now().minusSeconds(cacheTtlSegundos);
-
-        return analiseRepository
-                .findByItemLegislativo_IdAndAreaImpacto_Id(item.getId(), area.getId())
-                .filter(a -> a.getDataAnalise().isAfter(limite))
-                .filter(a -> Boolean.TRUE.equals(a.getSucesso()))
-                .orElse(null);
-    }
-
-    private AnaliseImpactoDTO gerarNovaAnalise(ItemLegislativo item, AreaImpacto area) {
-        long inicioMs = System.currentTimeMillis();
-
-        try {
-            String prompt = construirPrompt(item, area);
-            String promptSistema = construirPromptSistema();
-
-            RespostaLlamaDTO resposta = llamaService.enviarRequisicao(prompt, promptSistema, true);
-            ResultadoAnaliseImpactoIA resultado = parsearResposta(resposta);
-
-            long duracaoMs = System.currentTimeMillis() - inicioMs;
-
-            AnaliseImpacto analise = construirAnalise(item, area, resultado, resposta, duracaoMs);
-            analise = analiseRepository.save(analise);
-
-            log.info("Análise gerada: {} - {} - Nível: {}", item.getId(), area.getNome(), analise.getNivelImpacto());
-
-            return AnaliseImpactoDTO.from(analise);
-
-        } catch (Exception e) {
-            long duracaoMs = System.currentTimeMillis() - inicioMs;
-            registrarFalha(item, area, e, duracaoMs);
-
-            log.error("Erro ao gerar análise: {}", e.getMessage(), e);
-            throw AnaliseImpactoException.erroProcessamento(e.getMessage(), e);
-        }
-    }
-
-    private String construirPrompt(ItemLegislativo item, AreaImpacto area) {
         return String.format("""
             Analise o impacto desta proposição legislativa na área de %s:
             
@@ -384,7 +100,8 @@ public class AnaliseImpactoService {
         );
     }
 
-    private String construirPromptSistema() {
+    @Override
+    protected String construirPromptSistema() {
         return """
             Você é um especialista em análise de impacto legislativo brasileiro.
             Sua tarefa é avaliar como proposições legislativas afetam diferentes áreas.
@@ -401,18 +118,10 @@ public class AnaliseImpactoService {
             """;
     }
 
-    private ResultadoAnaliseImpactoIA parsearResposta(RespostaLlamaDTO resposta) {
-        try {
-            return llamaService.extrairJson(resposta, ResultadoAnaliseImpactoIA.class);
-        } catch (Exception e) {
-            log.error("Erro ao parsear resposta do Llama: {}", e.getMessage());
-            throw AnaliseImpactoException.erroProcessamento("Resposta em formato inválido", e);
-        }
-    }
-
-    private AnaliseImpacto construirAnalise(ItemLegislativo item, AreaImpacto area,
-                                            ResultadoAnaliseImpactoIA resultado,
-                                            RespostaLlamaDTO resposta, long duracaoMs) {
+    @Override
+    protected AnaliseImpacto construirEntidade(ResultadoAnaliseImpactoIA resultado, RespostaLlamaDTO resposta, long duracaoMs, Object... parametros) {
+        ItemLegislativo item = (ItemLegislativo) parametros[0];
+        AreaImpacto area = (AreaImpacto) parametros[1];
         LocalDateTime agora = LocalDateTime.now();
 
         return AnaliseImpacto.builder()
@@ -433,14 +142,17 @@ public class AnaliseImpactoService {
                 .respostaCompleta(resposta.getMessage().getContent())
                 .tempoProcessamentoMs(duracaoMs)
                 .sucesso(true)
-                .dataExpiracao(agora.plusSeconds(cacheTtlSegundos))
+                .dataExpiracao(calcularDataExpiracao())
                 .build();
     }
 
-    private void registrarFalha(ItemLegislativo item, AreaImpacto area, Exception erro, long duracaoMs) {
+    @Override
+    protected AnaliseImpacto construirEntidadeFalha(Exception erro, long duracaoMs, Object... parametros) {
+        ItemLegislativo item = (ItemLegislativo) parametros[0];
+        AreaImpacto area = (AreaImpacto) parametros[1];
         LocalDateTime agora = LocalDateTime.now();
 
-        AnaliseImpacto analiseFalha = AnaliseImpacto.builder()
+        return AnaliseImpacto.builder()
                 .itemLegislativo(item)
                 .areaImpacto(area)
                 .dataAnalise(agora)
@@ -448,10 +160,218 @@ public class AnaliseImpactoService {
                 .tempoProcessamentoMs(duracaoMs)
                 .sucesso(false)
                 .mensagemErro(erro.getMessage())
-                .dataExpiracao(agora.plusSeconds(cacheTtlSegundos))
+                .dataExpiracao(calcularDataExpiracao())
                 .build();
+    }
 
-        analiseRepository.save(analiseFalha);
+    @Override
+    protected Optional<AnaliseImpacto> buscarCacheRecente(Object... parametros) {
+        ItemLegislativo item = (ItemLegislativo) parametros[0];
+        AreaImpacto area = (AreaImpacto) parametros[1];
+
+        return repository.findByItemLegislativo_IdAndAreaImpacto_Id(item.getId(), area.getId())
+                .filter(this::isCacheValido);
+    }
+
+    @Transactional
+    public List<AnaliseImpactoDTO> analisar(SolicitarAnaliseImpactoDTO request) {
+        ItemLegislativo item = buscarItemLegislativo(request.getItemLegislativoId());
+        List<AreaImpacto> areasParaAnalisar = determinarAreas(request);
+
+        if (areasParaAnalisar.isEmpty()) {
+            throw new AnaliseImpactoException("Nenhuma área de impacto disponível para análise");
+        }
+
+        List<AnaliseImpactoDTO> analises = new ArrayList<>();
+
+        for (AreaImpacto area : areasParaAnalisar) {
+            try {
+                AnaliseImpacto analise = processarComCache(
+                        request.isForcarNovaAnalise(),
+                        item,
+                        area
+                );
+                analises.add(toDTO(analise));
+            } catch (Exception e) {
+                log.error("Erro ao analisar impacto na área {}: {}", area.getNome(), e.getMessage());
+            }
+        }
+
+        return analises;
+    }
+
+    @Transactional(readOnly = true)
+    @Cacheable(value = "analises-impacto", key = "#itemId + '-' + #areaId")
+    public AnaliseImpactoDTO buscarPorItemEArea(String itemId, String areaId) {
+        AnaliseImpacto analise = repository.findByItemLegislativo_IdAndAreaImpacto_Id(itemId, areaId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Análise não encontrada para item " + itemId + " e área " + areaId));
+
+        return toDTO(analise);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AnaliseImpactoDTO> buscarPorItem(String itemId, Pageable pageable) {
+        Page<AnaliseImpacto> analises = repository.findAllByItemLegislativo_Id(itemId, pageable);
+        return analises.map(this::toDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AnaliseImpactoDTO> buscarPorArea(String areaId, Pageable pageable) {
+        Page<AnaliseImpacto> analises = repository.findAllByAreaImpacto_Id(areaId, pageable);
+        return analises.map(this::toDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AnaliseImpactoDTO> buscarPorNivelImpacto(String nivelImpacto, Pageable pageable) {
+        Page<AnaliseImpacto> analises = repository.findAllByNivelImpacto(nivelImpacto, pageable);
+        return analises.map(this::toDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AnaliseImpactoDTO> buscarAltoImpacto(Pageable pageable) {
+        Page<AnaliseImpacto> analises = repository.findAllByNivelImpactoAlto(pageable);
+        return analises.map(this::toDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AnaliseImpactoDTO> buscarMedioImpacto(Pageable pageable) {
+        Page<AnaliseImpacto> analises = repository.findAllByNivelImpactoMedio(pageable);
+        return analises.map(this::toDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AnaliseImpactoDTO> buscarBaixoImpacto(Pageable pageable) {
+        Page<AnaliseImpacto> analises = repository.findAllByNivelImpactoBaixo(pageable);
+        return analises.map(this::toDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AnaliseImpactoDTO> buscarPorTipoImpacto(String tipoImpacto, Pageable pageable) {
+        Page<AnaliseImpacto> analises = repository.findAllByTipoImpacto(tipoImpacto, pageable);
+        return analises.map(this::toDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AnaliseImpactoDTO> buscarImpactoNegativo(Pageable pageable) {
+        Page<AnaliseImpacto> analises = repository.findAllByTipoImpactoNegativo(pageable);
+        return analises.map(this::toDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AnaliseImpactoDTO> buscarImpactoPositivo(Pageable pageable) {
+        Page<AnaliseImpacto> analises = repository.findAllByTipoImpactoPositivo(pageable);
+        return analises.map(this::toDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AnaliseImpactoDTO> buscarPorNivelETipo(String nivelImpacto, String tipoImpacto, Pageable pageable) {
+        Page<AnaliseImpacto> analises = repository.findAllByNivelImpactoAndTipoImpacto(nivelImpacto, tipoImpacto, pageable);
+        return analises.map(this::toDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AnaliseImpactoDTO> buscarAnalisesCriticas(Pageable pageable) {
+        Page<AnaliseImpacto> analises = repository.findAnalisesCriticas(pageable);
+        return analises.map(this::toDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AnaliseImpactoDTO> buscarAltoImpactoNegativo(Pageable pageable) {
+        Page<AnaliseImpacto> analises = repository.findAllByAltoImpactoNegativo(pageable);
+        return analises.map(this::toDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AnaliseImpactoDTO> buscarPorPercentualMinimo(Double percentualMinimo) {
+        List<AnaliseImpacto> analises = repository.findByPercentualImpactoGreaterThanEqual(percentualMinimo);
+        return analises.stream().map(this::toDTO).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AnaliseImpactoDTO> buscarPorPercentualEntre(Double min, Double max, Pageable pageable) {
+        Page<AnaliseImpacto> analises = repository.findAllByPercentualImpactoBetween(min, max, pageable);
+        return analises.map(this::toDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AnaliseImpactoDTO> buscarBemSucebidasPorArea(String areaId, Pageable pageable) {
+        Page<AnaliseImpacto> analises = repository.findAllByAreaImpacto_IdAndSucessoTrue(areaId, pageable);
+        return analises.map(this::toDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AnaliseImpactoDTO> buscarRecentesBemSucedidas(Pageable pageable) {
+        LocalDateTime limite = LocalDateTime.now().minusDays(30);
+        Page<AnaliseImpacto> analises = repository.findAnalisesBemSucedsRecentes(limite, pageable);
+        return analises.map(this::toDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AnaliseImpactoDTO> buscarAltoImpactoRecentes(Pageable pageable) {
+        LocalDateTime limite = LocalDateTime.now().minusDays(30);
+        Page<AnaliseImpacto> analises = repository.findAnaliseAltoImpactoRecentes(limite, pageable);
+        return analises.map(this::toDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AnaliseImpactoDTO> buscarPorAreaNoPeriodo(String areaId, LocalDateTime inicio, LocalDateTime fim) {
+        List<AnaliseImpacto> analises = repository.findByAreaNoPeriodo(areaId, inicio, fim);
+        return analises.stream().map(this::toDTO).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public EstatisticasImpactoDTO calcularEstatisticas(int dias) {
+        LocalDateTime inicio = LocalDateTime.now().minusDays(dias);
+        List<AnaliseImpacto> analises = repository.findByDataAnaliseAfter(inicio);
+
+        if (analises.isEmpty()) {
+            return construirEstatisticasVazias(inicio, LocalDateTime.now());
+        }
+
+        return calcularEstatisticasDeAnalises(analises, inicio);
+    }
+
+    @Transactional(readOnly = true)
+    public long contarPorNivel(String nivelImpacto) {
+        return repository.countByNivelImpacto(nivelImpacto);
+    }
+
+    @Transactional(readOnly = true)
+    public long contarPorTipo(String tipoImpacto) {
+        return repository.countByTipoImpacto(tipoImpacto);
+    }
+
+    @Transactional(readOnly = true)
+    public long contarPorArea(String areaId) {
+        return repository.countByAreaImpacto_Id(areaId);
+    }
+
+    @Transactional(readOnly = true)
+    public long contarPorItem(String itemId) {
+        return repository.countByItemLegislativo_Id(itemId);
+    }
+
+    @Transactional(readOnly = true)
+    public long contarPorNivelETipo(String nivelImpacto, String tipoImpacto) {
+        return repository.countByNivelImpactoAndTipoImpacto(nivelImpacto, tipoImpacto);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean existeAnalisePara(String itemId, String areaId) {
+        return repository.existsByItemLegislativo_IdAndAreaImpacto_Id(itemId, areaId);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean existeAnaliseBemSucedidaPara(String itemId, String areaId) {
+        return repository.existsByItemLegislativo_IdAndAreaImpacto_IdAndSucessoTrue(itemId, areaId);
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "analises-impacto", allEntries = true)
+    public void limparExpiradas() {
+        super.limparExpiradas();
     }
 
     private ItemLegislativo buscarItemLegislativo(String itemId) {
@@ -554,15 +474,4 @@ public class AnaliseImpactoService {
                 .orElse(0.0);
     }
 
-    private record ResultadoAnaliseImpactoIA(
-            String nivelImpacto,
-            String tipoImpacto,
-            Double percentualImpacto,
-            String analiseDetalhada,
-            List<String> consequencias,
-            List<String> gruposAfetados,
-            List<String> riscos,
-            List<String> oportunidades,
-            String recomendacoes
-    ) {}
 }
