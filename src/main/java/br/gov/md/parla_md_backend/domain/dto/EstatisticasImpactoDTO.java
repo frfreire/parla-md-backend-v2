@@ -1,48 +1,34 @@
 package br.gov.md.parla_md_backend.domain.dto;
 
-import lombok.AllArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.Map;
 
-@Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class EstatisticasImpactoDTO {
+public record EstatisticasImpactoDTO(
+        Long totalAnalises,
+        Long analisesComSucesso,
+        Long analisesFalhas,
+        Double taxaSucesso,
 
-    private Long totalAnalises;
+        Map<String, Long> distribuicaoPorNivel,
+        Map<String, Long> distribuicaoPorTipo,
+        Map<String, Long> distribuicaoPorArea,
 
-    private Long analisesComSucesso;
+        Long impactosAltos,
+        Long impactosMedios,
+        Long impactosBaixos,
+        Long impactosNegativos,
+        Long impactosPositivos,
 
-    private Long analisesFalhas;
+        Double percentualImpactoMedio,
+        Long tempoMedioMs,
 
-    private Double taxaSucesso;
+        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+        LocalDateTime periodoInicio,
 
-    private Map<String, Long> distribuicaoPorNivel;
-
-    private Map<String, Long> distribuicaoPorTipo;
-
-    private Map<String, Long> distribuicaoPorArea;
-
-    private Long impactosAltos;
-
-    private Long impactosMedios;
-
-    private Long impactosBaixos;
-
-    private Long impactosNegativos;
-
-    private Long impactosPositivos;
-
-    private Double percentualImpactoMedio;
-
-    private Long tempoMedioMs;
-
-    private LocalDateTime periodoInicio;
-
-    private LocalDateTime periodoFim;
-}
+        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+        LocalDateTime periodoFim
+) {}

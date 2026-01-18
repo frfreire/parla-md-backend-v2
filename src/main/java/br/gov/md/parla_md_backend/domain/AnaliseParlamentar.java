@@ -1,5 +1,6 @@
 package br.gov.md.parla_md_backend.domain;
 
+import br.gov.md.parla_md_backend.domain.interfaces.AnaliseIAEntity;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -25,7 +26,7 @@ import java.util.Map;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AnaliseParlamentar {
+public class AnaliseParlamentar implements AnaliseIAEntity {
 
     @Id
     private String id;
@@ -38,48 +39,29 @@ public class AnaliseParlamentar {
     private String tema;
 
     private String posicionamento;
-
     private Double confiabilidade;
-
     private String analiseDetalhada;
-
     private String tendencia;
-
     private List<String> padroesIdentificados;
-
     private Map<String, Object> estatisticas;
-
     private Integer totalVotacoes;
-
     private Integer votosAFavor;
-
     private Integer votosContra;
-
     private Integer abstencoes;
-
     private Double percentualCoerencia;
-
     private List<String> votacoesChave;
-
     private String alinhamentoPolitico;
-
     private String previsaoComportamento;
 
     @Indexed
     private LocalDateTime dataAnalise;
 
     private String modeloVersao;
-
     private String promptUtilizado;
-
     private String respostaCompleta;
-
     private Long tempoProcessamentoMs;
-
     private Boolean sucesso;
-
     private String mensagemErro;
-
     private LocalDateTime dataExpiracao;
 
     public boolean isPosicionamentoPro() {

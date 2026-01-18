@@ -36,6 +36,7 @@ import java.util.stream.Collectors;
 public class MetricasDesempenhoService {
 
     private final LlamaService llamaService;
+    private final TendenciasIAService tendenciasIAService;
     private final IMetricaDashboardRepository metricaRepository;
     private final IHistoricoMetricasRepository historicoRepository;
     private final IProposicaoRepository proposicaoRepository;
@@ -169,18 +170,14 @@ public class MetricasDesempenhoService {
         try {
             Map<String, Object> dadosContexto = coletarDadosParaTendencias();
 
-            String prompt = construirPromptTendencias(dadosContexto);
-            String promptSistema = construirPromptSistemaTendencias();
+            TendenciasIADTO resultado = tendenciasIAService.analisarTendencias(dadosContexto);
 
-            RespostaLlamaDTO resposta = llamaService.enviarRequisicao(
-                    prompt,
-                    promptSistema,
-                    true
-            );
-
-            ResultadoTendenciasIA resultado = parsearRespostaTendencias(resposta);
-
-            return construirTendenciasDTO(resultado, dadosContexto);
+            return TendenciasDTO.builder()
+                    .temasEmAlta(resultado.temasEmergentes())
+                    .analiseIA(resultado.analiseGeral())
+                    .alertas(resultado.alertas())
+                    .previsaoProximoMes(resultado.previsaoProximoMes())
+                    .build();
 
         } catch (Exception e) {
             log.error("Erro ao analisar tendências com IA: {}", e.getMessage(), e);
@@ -404,21 +401,25 @@ public class MetricasDesempenhoService {
     }
 
     private Map<String, Object> coletarDadosParaTendencias() {
-        Map<String, Object> dados = new HashMap<>();
+        Map<String, Object> dados = new java.util.HashMap<>();
 
-        dados.put("documentosUltimos30Dias", contarDocumentosNovos(
-                LocalDate.now().minusDays(30), LocalDate.now()));
-        dados.put("crescimentoMensal", calcularTaxaCrescimento(
-                LocalDate.now().minusMonths(2),
-                LocalDate.now().minusMonths(1),
-                LocalDate.now().minusMonths(1),
-                LocalDate.now()));
+        LocalDate agora = LocalDate.now();
+        LocalDate umMesAtras = agora.minusMonths(1);
 
-        dados.put("temasPopulares", calcularDistribuicaoPorTema());
-        dados.put("partidosAtivos", calcularDistribuicaoPorPartido());
+        long totalProposicoes = proposicaoRepository.count();
+        long totalMaterias = materiaRepository.count();
+
+        dados.put("totalDocumentos", totalProposicoes + totalMaterias);
+        dados.put("totalProposicoes", totalProposicoes);
+        dados.put("totalMaterias", totalMaterias);
+        dados.put("documentosUltimoMes", contarDocumentosNovos(umMesAtras, agora));
+        dados.put("pareceresPendentes", parecerRepository.countByStatus(StatusParecer.EM_ELABORACAO));
+        dados.put("posicionamentosPendentes", posicionamentoRepository.countByStatus(StatusPosicionamento.SOLICITADO));
+        dados.put("taxaEficiencia", calcularEficiencia());
 
         return dados;
     }
+
 
     private String construirPromptTendencias(Map<String, Object> dados) {
         return String.format("""

@@ -1,5 +1,6 @@
 package br.gov.md.parla_md_backend.domain;
 
+import br.gov.md.parla_md_backend.domain.interfaces.AnaliseIAEntity;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -23,7 +24,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Sumario {
+public class Sumario implements AnaliseIAEntity {
 
     @Id
     private String id;
@@ -33,45 +34,33 @@ public class Sumario {
     private ItemLegislativo itemLegislativo;
 
     private String tipoSumario;
-
     private String sumarioExecutivo;
-
     private List<String> pontosPrincipais;
-
     private List<String> entidadesRelevantes;
-
     private List<String> palavrasChave;
-
     private String temasPrincipais;
-
     private String sentimentoGeral;
-
     private String impactoEstimado;
-
     private String observacoes;
 
     @Indexed
     private LocalDateTime dataCriacao;
 
     private String modeloVersao;
-
     private String promptUtilizado;
-
     private String respostaCompleta;
-
     private Long tempoProcessamentoMs;
-
     private Integer tamanhoTextoOriginal;
-
     private Integer tamanhoSumario;
-
     private Double taxaCompressao;
-
     private Boolean sucesso;
-
     private String mensagemErro;
-
     private LocalDateTime dataExpiracao;
+
+    @Override
+    public LocalDateTime getDataAnalise() {
+        return dataCriacao;
+    }
 
     public double calcularTaxaCompressao() {
         if (tamanhoTextoOriginal == null || tamanhoTextoOriginal == 0) {

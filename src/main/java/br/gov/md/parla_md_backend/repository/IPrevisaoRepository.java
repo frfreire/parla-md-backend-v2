@@ -1,10 +1,9 @@
 package br.gov.md.parla_md_backend.repository;
 
-import br.gov.md.parla_md_backend.domain.Previsao;
 import br.gov.md.parla_md_backend.domain.ItemLegislativo;
+import br.gov.md.parla_md_backend.domain.Previsao;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -13,7 +12,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface IPrevisaoRepository extends MongoRepository<Previsao, String> {
+public interface IPrevisaoRepository extends IAnaliseIARepository<Previsao> {
 
     List<Previsao> findByItemLegislativo(ItemLegislativo item);
 
@@ -40,14 +39,9 @@ public interface IPrevisaoRepository extends MongoRepository<Previsao, String> {
     @Query("{ 'confianca': { $gte: ?0 } }")
     List<Previsao> buscarComConfiancaMinima(Double confiancaMinima);
 
-    @Query("{ 'dataExpiracao': { $lt: ?0 } }")
-    List<Previsao> buscarExpiradas(LocalDateTime agora);
-
     long countByTipoPrevisao(String tipoPrevisao);
 
     long countBySucesso(Boolean sucesso);
 
     long countByDataPrevisaoAfter(LocalDateTime dataPrevisao);
-
-    void deleteByDataExpiracaoBefore(LocalDateTime dataLimite);
 }

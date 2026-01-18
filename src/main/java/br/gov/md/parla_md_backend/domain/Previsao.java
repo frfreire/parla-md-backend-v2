@@ -1,5 +1,6 @@
 package br.gov.md.parla_md_backend.domain;
 
+import br.gov.md.parla_md_backend.domain.interfaces.AnaliseIAEntity;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,7 +23,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Previsao {
+public class Previsao implements AnaliseIAEntity {
 
     @Id
     private String id;
@@ -32,33 +33,27 @@ public class Previsao {
     private ItemLegislativo itemLegislativo;
 
     private String tipoPrevisao;
-
     private Double probabilidadeAprovacao;
-
     private Double confianca;
-
     private String justificativa;
-
     private String fatoresPositivos;
-
     private String fatoresNegativos;
 
     @Indexed
     private LocalDateTime dataPrevisao;
 
     private String modeloVersao;
-
     private String promptUtilizado;
-
     private String respostaCompleta;
-
     private Long tempoProcessamentoMs;
-
     private Boolean sucesso;
-
     private String mensagemErro;
-
     private LocalDateTime dataExpiracao;
+
+    @Override
+    public LocalDateTime getDataAnalise() {
+        return dataPrevisao;
+    }
 
     public boolean isAltaConfianca() {
         return confianca != null && confianca >= 0.8;
