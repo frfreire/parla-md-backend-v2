@@ -6,7 +6,6 @@ import br.gov.md.parla_md_backend.domain.Usuario;
 import br.gov.md.parla_md_backend.domain.dto.EncaminhamentoDTO;
 import br.gov.md.parla_md_backend.domain.dto.TramitacaoDTO;
 import br.gov.md.parla_md_backend.domain.enums.StatusTramitacao;
-import br.gov.md.parla_md_backend.domain.enums.TipoTramitacao;
 import br.gov.md.parla_md_backend.exception.RecursoNaoEncontradoException;
 import br.gov.md.parla_md_backend.exception.TramitacaoInvalidaException;
 import br.gov.md.parla_md_backend.repository.IProcessoLegislativoRepository;
@@ -59,7 +58,7 @@ public class TramitacaoService {
                 .despacho(dto.getDespacho())
                 .observacoes(dto.getObservacoes())
                 .status(StatusTramitacao.PENDENTE)
-                .urgente(Boolean.TRUE.equals(dto.isUrgente()))
+                .urgente(dto.isUrgente())
                 .dataEnvio(LocalDateTime.now())
                 .prazo(LocalDate.from(dto.getPrazo()))
                 .build();

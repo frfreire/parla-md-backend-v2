@@ -34,7 +34,7 @@ import java.util.Map;
 @RequestMapping("/api/parlamentares")
 @RequiredArgsConstructor
 @Tag(name = "Parlamentares", description = "Operações relacionadas a parlamentares")
-@SecurityRequirement(name = "bearer-key")
+@SecurityRequirement(name = "bearer-jwt")
 public class ParlamentarController {
 
     private final AnaliseParlamentarService analiseParlamentarService;
@@ -103,41 +103,6 @@ public class ParlamentarController {
                 .build();
 
         AnaliseParlamentarDTO analise = analiseParlamentarService.analisar(request);
-
-        return ResponseEntity.ok(analise);
-    }
-
-    @GetMapping("/{id}/analises")
-    @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR', 'ANALISTA')")
-    @Operation(
-            summary = "Listar análises de um parlamentar",
-            description = "Retorna todas as análises geradas para o parlamentar"
-    )
-    public ResponseEntity<List<AnaliseParlamentarDTO>> listarAnalises(
-            @Parameter(description = "ID do parlamentar") @PathVariable String id) {
-
-        log.debug("Listando análises do parlamentar: {}", id);
-
-        List<AnaliseParlamentarDTO> analises = analiseParlamentarService
-                .buscarAnalisesPorParlamentar(id);
-
-        return ResponseEntity.ok(analises);
-    }
-
-    @GetMapping("/{id}/analise/{tema}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR', 'ANALISTA')")
-    @Operation(
-            summary = "Buscar análise específica",
-            description = "Retorna análise de um parlamentar sobre tema específico"
-    )
-    public ResponseEntity<AnaliseParlamentarDTO> buscarAnalisePorTema(
-            @Parameter(description = "ID do parlamentar") @PathVariable String id,
-            @Parameter(description = "Tema da análise") @PathVariable String tema) {
-
-        log.debug("Buscando análise: parlamentar={}, tema={}", id, tema);
-
-        AnaliseParlamentarDTO analise = analiseParlamentarService
-                .buscarAnalisePorParlamentarETema(id, tema);
 
         return ResponseEntity.ok(analise);
     }

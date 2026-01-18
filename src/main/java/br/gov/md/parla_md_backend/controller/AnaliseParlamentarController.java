@@ -28,7 +28,7 @@ import java.util.List;
 @RequestMapping("/api/analise-parlamentar")
 @RequiredArgsConstructor
 @Tag(name = "Análise Parlamentar", description = "Análise de comportamento parlamentar com IA")
-@SecurityRequirement(name = "bearer-key")
+@SecurityRequirement(name = "bearer-jwt")
 public class AnaliseParlamentarController {
 
     private final AnaliseParlamentarService analiseParlamentarService;

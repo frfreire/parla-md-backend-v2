@@ -1,5 +1,7 @@
 package br.gov.md.parla_md_backend.controller;
 
+import br.gov.md.parla_md_backend.domain.Parlamentar;
+import br.gov.md.parla_md_backend.domain.ProcedimentoMateria;
 import br.gov.md.parla_md_backend.domain.dto.MateriaDTO;
 import br.gov.md.parla_md_backend.domain.enums.TipoMateria;
 import br.gov.md.parla_md_backend.domain.enums.StatusTriagem;
@@ -54,11 +56,6 @@ public class MateriaController {
 
     private final SenadoService senadoService;
 
-    // ==================== ENDPOINTS DE CONSULTA ====================
-
-    /**
-     * Lista todas as matérias com paginação.
-     */
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'ANALISTA', 'GESTOR', 'EXTERNO')")
     @Operation(
@@ -79,9 +76,6 @@ public class MateriaController {
         return ResponseEntity.ok(materias);
     }
 
-    /**
-     * Busca matéria por ID.
-     */
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'ANALISTA', 'GESTOR', 'EXTERNO')")
     @Operation(
@@ -102,9 +96,6 @@ public class MateriaController {
         return ResponseEntity.ok(materia);
     }
 
-    /**
-     * Busca matéria por código do Senado.
-     */
     @GetMapping("/codigo/{codigoMateria}")
     @PreAuthorize("hasAnyRole('ADMIN', 'ANALISTA', 'GESTOR', 'EXTERNO')")
     @Operation(
@@ -124,9 +115,6 @@ public class MateriaController {
         return ResponseEntity.ok(materia);
     }
 
-    /**
-     * Busca matérias por ano.
-     */
     @GetMapping("/ano/{ano}")
     @PreAuthorize("hasAnyRole('ADMIN', 'ANALISTA', 'GESTOR', 'EXTERNO')")
     @Operation(
@@ -153,9 +141,6 @@ public class MateriaController {
         return ResponseEntity.ok(materias);
     }
 
-    /**
-     * Busca matérias por tipo.
-     */
     @GetMapping("/tipo/{tipo}")
     @PreAuthorize("hasAnyRole('ADMIN', 'ANALISTA', 'GESTOR', 'EXTERNO')")
     @Operation(
@@ -177,9 +162,6 @@ public class MateriaController {
         return ResponseEntity.ok(materias);
     }
 
-    /**
-     * Busca matérias em tramitação.
-     */
     @GetMapping("/em-tramitacao")
     @PreAuthorize("hasAnyRole('ADMIN', 'ANALISTA', 'GESTOR', 'EXTERNO')")
     @Operation(
@@ -195,9 +177,6 @@ public class MateriaController {
         return ResponseEntity.ok(materias);
     }
 
-    /**
-     * Busca matérias por status de triagem.
-     */
     @GetMapping("/triagem/{status}")
     @PreAuthorize("hasAnyRole('ADMIN', 'ANALISTA', 'GESTOR')")
     @Operation(
@@ -215,9 +194,6 @@ public class MateriaController {
         return ResponseEntity.ok(materias);
     }
 
-    /**
-     * Busca matérias apresentadas recentemente.
-     */
     @GetMapping("/recentes")
     @PreAuthorize("hasAnyRole('ADMIN', 'ANALISTA', 'GESTOR', 'EXTERNO')")
     @Operation(
@@ -234,11 +210,6 @@ public class MateriaController {
         return ResponseEntity.ok(materias);
     }
 
-    // ==================== ENDPOINTS DE SINCRONIZAÇÃO ====================
-
-    /**
-     * Sincroniza matérias com a API do Senado.
-     */
     @PostMapping("/sincronizar")
     @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR')")
     @Operation(
@@ -283,9 +254,6 @@ public class MateriaController {
         }
     }
 
-    /**
-     * Retorna status da última sincronização.
-     */
     @GetMapping("/sincronizacao/status")
     @PreAuthorize("hasAnyRole('ADMIN', 'ANALISTA', 'GESTOR')")
     @Operation(
@@ -301,11 +269,6 @@ public class MateriaController {
         ));
     }
 
-    // ==================== ENDPOINTS DE ATUALIZAÇÃO ====================
-
-    /**
-     * Atualiza uma matéria existente.
-     */
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'GESTOR')")
     @Operation(
@@ -326,9 +289,6 @@ public class MateriaController {
         return ResponseEntity.ok(atualizada);
     }
 
-    /**
-     * Atualiza status de triagem de uma matéria.
-     */
     @PatchMapping("/{id}/triagem")
     @PreAuthorize("hasAnyRole('ADMIN', 'ANALISTA', 'GESTOR')")
     @Operation(
@@ -353,9 +313,6 @@ public class MateriaController {
         return ResponseEntity.ok(atualizada);
     }
 
-    /**
-     * Remove uma matéria.
-     */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
@@ -374,11 +331,6 @@ public class MateriaController {
         return ResponseEntity.noContent().build();
     }
 
-    // ==================== ENDPOINTS PÚBLICOS ====================
-
-    /**
-     * Endpoint público para consulta de matérias (sem autenticação).
-     */
     @GetMapping("/publico")
     @Operation(
             summary = "Consulta pública de matérias",
@@ -401,5 +353,89 @@ public class MateriaController {
         }
 
         return ResponseEntity.ok(materias);
+    }
+
+    @GetMapping("/senadores")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ANALISTA', 'GESTOR', 'EXTERNO')")
+    @Operation(
+            summary = "Listar senadores",
+            description = "Retorna lista de todos os senadores cadastrados"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Lista de senadores retornada"),
+            @ApiResponse(responseCode = "401", description = "Não autenticado"),
+            @ApiResponse(responseCode = "403", description = "Sem permissão de acesso")
+    })
+    public ResponseEntity<List<Parlamentar>> listarSenadores() {
+        log.debug("Listando senadores cadastrados");
+
+        List<Parlamentar> senadores = senadoService.buscarSenadores();
+
+        log.debug("Retornados {} senadores", senadores.size());
+
+        return ResponseEntity.ok(senadores);
+    }
+
+    @GetMapping("/senadores/buscar")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ANALISTA', 'GESTOR', 'EXTERNO')")
+    @Operation(
+            summary = "Buscar senador por nome",
+            description = "Busca senador específico pelo nome completo ou parcial"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Senador encontrado"),
+            @ApiResponse(responseCode = "404", description = "Senador não encontrado"),
+            @ApiResponse(responseCode = "401", description = "Não autenticado")
+    })
+    public ResponseEntity<Parlamentar> buscarSenadorPorNome(
+            @Parameter(description = "Nome do senador", required = true, example = "José Silva")
+            @RequestParam String nome) {
+
+        log.debug("Buscando senador por nome: {}", nome);
+
+        Parlamentar senador = senadoService.buscarSenadorPorNome(nome);
+
+        if (senador == null) {
+            log.warn("Senador não encontrado: {}", nome);
+            return ResponseEntity.notFound().build();
+        }
+
+        log.debug("Senador encontrado: {}", senador.getNome());
+
+        return ResponseEntity.ok(senador);
+    }
+
+    @GetMapping("/{codigoMateria}/procedimentos")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ANALISTA', 'GESTOR', 'EXTERNO')")
+    @Operation(
+            summary = "Listar procedimentos de uma matéria",
+            description = "Retorna histórico completo de tramitação de uma matéria pelo código"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Lista de procedimentos retornada"),
+            @ApiResponse(responseCode = "404", description = "Matéria não encontrada"),
+            @ApiResponse(responseCode = "500", description = "Erro ao buscar procedimentos da API do Senado"),
+            @ApiResponse(responseCode = "401", description = "Não autenticado")
+    })
+    public ResponseEntity<List<ProcedimentoMateria>> listarProcedimentos(
+            @Parameter(description = "Código da matéria no Senado", required = true, example = "12345")
+            @PathVariable Long codigoMateria) {
+
+        log.debug("Buscando procedimentos da matéria: {}", codigoMateria);
+
+        try {
+            List<ProcedimentoMateria> procedimentos = senadoService.buscarProcedimentos(codigoMateria);
+
+            log.info("Retornados {} procedimentos para matéria {}",
+                    procedimentos.size(), codigoMateria);
+
+            return ResponseEntity.ok(procedimentos);
+
+        } catch (Exception e) {
+            log.error("Erro ao buscar procedimentos da matéria {}: {}",
+                    codigoMateria, e.getMessage());
+
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 }

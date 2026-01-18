@@ -30,7 +30,7 @@ import java.util.Map;
 @RequestMapping("/api/llama")
 @RequiredArgsConstructor
 @Tag(name = "Llama IA", description = "Integração com LLM Llama via Ollama")
-@SecurityRequirement(name = "bearer-key")
+@SecurityRequirement(name = "bearer-jwt")
 public class LlamaController {
 
     private final LlamaService llamaService;
