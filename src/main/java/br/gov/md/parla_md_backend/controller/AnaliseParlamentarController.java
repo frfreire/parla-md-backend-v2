@@ -73,7 +73,7 @@ public class AnaliseParlamentarController {
         log.debug("Buscando análise: parlamentar={}, tema={}", parlamentarId, tema);
 
         AnaliseParlamentarDTO analise = analiseParlamentarService
-                .buscarAnalisePorParlamentarETema(parlamentarId, tema);
+                .buscarPorParlamentarETema(parlamentarId, tema);
 
         return ResponseEntity.ok(analise);
     }
@@ -87,14 +87,12 @@ public class AnaliseParlamentarController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Análises retornadas")
     })
-    public ResponseEntity<List<AnaliseParlamentarDTO>> buscarPorParlamentar(
-            @Parameter(description = "ID do parlamentar") @PathVariable String parlamentarId) {
+    public ResponseEntity<Page<AnaliseParlamentarDTO>> buscarPorParlamentar(
+            @PathVariable String parlamentarId,
+            @PageableDefault(size = 20, sort = "dataAnalise") Pageable pageable) {
 
-        log.debug("Buscando análises do parlamentar: {}", parlamentarId);
-
-        List<AnaliseParlamentarDTO> analises = analiseParlamentarService
-                .buscarAnalisesPorParlamentar(parlamentarId);
-
+        Page<AnaliseParlamentarDTO> analises = analiseParlamentarService
+                .buscarPorParlamentar(parlamentarId, pageable);
         return ResponseEntity.ok(analises);
     }
 
@@ -114,7 +112,7 @@ public class AnaliseParlamentarController {
         log.debug("Buscando análises por tema: {}", tema);
 
         Page<AnaliseParlamentarDTO> analises = analiseParlamentarService
-                .buscarAnalisesPorTema(tema, pageable);
+                .buscarPorTema(tema, pageable);
 
         return ResponseEntity.ok(analises);
     }

@@ -426,6 +426,13 @@ public class AnaliseParlamentarService extends BaseIAService<AnaliseParlamentar,
                 .build();
     }
 
+    @Transactional(readOnly = true)
+    public Page<AnaliseParlamentarDTO> buscarAnalisesRecentes(Pageable pageable) {
+        LocalDateTime inicio = LocalDateTime.now().minusDays(30);
+        LocalDateTime fim = LocalDateTime.now();
+        return buscarEntreDatas(inicio, fim, pageable);
+    }
+
     private EstatisticasParlamentarDTO construirEstatisticasVazias(LocalDateTime inicio, LocalDateTime fim) {
         return EstatisticasParlamentarDTO.builder()
                 .totalAnalises(0L)
@@ -493,4 +500,6 @@ public class AnaliseParlamentarService extends BaseIAService<AnaliseParlamentar,
                 .average()
                 .orElse(0.0);
     }
+
+
 }
