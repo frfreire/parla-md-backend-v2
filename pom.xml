@@ -17,7 +17,38 @@
 		<java.version>21</java.version>
 		<springdoc.version>2.3.0</springdoc.version>
 	</properties>
-
+    <repositories>
+        <repository>
+            <id>maven-central</id>
+            <url>https://repo.maven.apache.org/maven2</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>spring-milestones</id>
+            <url>https://repo.spring.io/milestone</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>spring-releases</id>
+            <url>https://repo.spring.io/release</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
 	<dependencies>
 		<!-- Spring Boot Security e OAuth2 -->
 		<dependency>
@@ -51,7 +82,11 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
-
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
 		<!-- Banco de Dados -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -121,36 +156,6 @@
 			<artifactId>micrometer-registry-prometheus</artifactId>
 		</dependency>
 
-		<!-- Processamento de Linguagem Natural -->
-<!--		<dependency>-->
-<!--			<groupId>edu.stanford.nlp</groupId>-->
-<!--			<artifactId>stanford-corenlp</artifactId>-->
-<!--			<version>4.5.4</version>-->
-<!--		</dependency>-->
-<!--		<dependency>-->
-<!--			<groupId>edu.stanford.nlp</groupId>-->
-<!--			<artifactId>stanford-corenlp</artifactId>-->
-<!--			<version>4.5.4</version>-->
-<!--			<classifier>models</classifier>-->
-<!--		</dependency>-->
-<!--		<dependency>-->
-<!--			<groupId>org.apache.opennlp</groupId>-->
-<!--			<artifactId>opennlp-tools</artifactId>-->
-<!--			<version>2.0.0</version>-->
-<!--		</dependency>-->
-
-<!--		&lt;!&ndash; Machine Learning &ndash;&gt;-->
-<!--		<dependency>-->
-<!--			<groupId>nz.ac.waikato.cms.weka</groupId>-->
-<!--			<artifactId>weka-stable</artifactId>-->
-<!--			<version>3.8.6</version>-->
-<!--			<exclusions>-->
-<!--				<exclusion>-->
-<!--					<groupId>com.vaadin.external.google</groupId>-->
-<!--					<artifactId>android-json</artifactId>-->
-<!--				</exclusion>-->
-<!--			</exclusions>-->
-<!--		</dependency>-->
 	</dependencies>
 
 	<build>

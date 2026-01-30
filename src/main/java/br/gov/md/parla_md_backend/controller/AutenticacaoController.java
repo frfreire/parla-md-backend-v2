@@ -17,7 +17,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
@@ -152,7 +154,6 @@ public class AutenticacaoController {
         }
     }
 
-    @PostMapping("/check-permission")
     @Operation(summary = "Verificar se usuário possui permissão específica",
             description = "Verifica se o usuário autenticado possui uma permissão específica",
             security = @SecurityRequirement(name = "bearerAuth"))
@@ -161,15 +162,19 @@ public class AutenticacaoController {
             @ApiResponse(responseCode = "400", description = "Dados inválidos"),
             @ApiResponse(responseCode = "401", description = "Usuário não autenticado")
     })
+    @PostMapping("/check-permission")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Boolean> verificarPermissao(
-            @Valid @RequestBody
-            @Parameter(description = "Dados da permissão a ser verificada")
-            PermissaoDTO permissao) {
+    public ResponseEntity<Boolean> verificarPermissao(@Valid @RequestBody PermissaoDTO permissao) {
+
+        if (permissao == null || permissao.getPermissao() == null || permissao.getPermissao().isBlank()) {
+            logger.warn("Tentativa de verificação de permissão com dados inválidos");
+            return ResponseEntity.badRequest().build();
+        }
 
         logger.debug("Verificação de permissão: {}", permissao.getPermissao());
 
         try {
+
             Boolean possuiPermissao = autenticacaoApiService.verificarPermissao(permissao.getPermissao());
 
             logger.debug("Resultado da verificação de permissão '{}': {}",
@@ -311,6 +316,21 @@ public class AutenticacaoController {
         } catch (Exception e) {
             logger.error("Erro ao obter claims do token: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    @RestControllerAdvice
+    public class ValidationExceptionHandler {
+
+        @ExceptionHandler(MethodArgumentNotValidException.class)
+        @ResponseStatus(HttpStatus.BAD_REQUEST)
+        public Map<String, String> handleValidationExceptions(MethodArgumentNotValidException ex) {
+            Map<String, String> errors = new HashMap<>();
+            ex.getBindingResult().getAllErrors().forEach((error) -> {
+                String fieldName = ((FieldError) error).getField();
+                String errorMessage = error.getDefaultMessage();
+                errors.put(fieldName, errorMessage);
+            });
+            return errors;
         }
     }
 }

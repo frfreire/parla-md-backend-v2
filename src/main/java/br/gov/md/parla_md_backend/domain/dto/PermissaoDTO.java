@@ -3,6 +3,7 @@ package br.gov.md.parla_md_backend.domain.dto;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -24,6 +25,7 @@ public class PermissaoDTO {
             example = "READ_PROJETOS",
             requiredMode = Schema.RequiredMode.REQUIRED)
     @JsonProperty("permissao")
+    @NotNull(message = "Permissão não pode ser nula")
     @NotBlank(message = "Permissão é obrigatória")
     private String permissao;
 
