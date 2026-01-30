@@ -128,12 +128,11 @@ services:
       keycloak-postgres:
         condition: service_healthy
     healthcheck:
-      # Healthcheck via TCP para garantir que a porta está aberta
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080;echo -e \"GET /health/ready HTTP/1.1\r\nhost: http://localhost\r\nConnection: close\r\n\r\n\" >&3;grep \"HTTP/1.1 200 OK\" <&3"]
-      interval: 10s
-      timeout: 10s
-      retries: 15
-      start_period: 90s
+      test: [ "CMD-SHELL", "timeout 1 bash -c 'cat < /dev/null > /dev/tcp/127.0.0.1/8080' || exit 1" ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 120s
 
   # =========================================================================
   # OLLAMA - AI Service
@@ -149,9 +148,9 @@ services:
     networks:
       - parlamd-ai
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/version"]
+      test: [ "CMD-SHELL", "timeout 1 bash -c 'cat < /dev/null > /dev/tcp/127.0.0.1/11434' || exit 1" ]
       interval: 15s
-      timeout: 10s
+      timeout: 5s
       retries: 5
       start_period: 60s
 
