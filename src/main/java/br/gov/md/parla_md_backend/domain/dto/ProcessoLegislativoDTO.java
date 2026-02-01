@@ -26,8 +26,10 @@ public class ProcessoLegislativoDTO {
     private StatusProcesso status;
     private List<String> proposicaoIds;
     private List<String> materiaIds;
-    private String setorResponsavel;
-    private String analistaResponsavel;
+    private String setorResponsavelId;
+    private String setorResponsavelNome;
+    private String gestorId;
+    private String gestorNome;
     private LocalDateTime dataCriacao;
     private LocalDateTime dataUltimaAtualizacao;
     private LocalDateTime prazoFinal;
@@ -42,6 +44,31 @@ public class ProcessoLegislativoDTO {
     private LocalDateTime dataFinalizacao;
     private String observacoes;
 
-    public ProcessoLegislativoDTO(String id, String numero, String titulo, String descricao, StatusProcesso status, PrioridadeProcesso prioridade, List<String> proposicaoIds, List<String> materiaIds, String temaPrincipal, String setorResponsavelId, String setorResponsavelNome, String gestorId, String gestorNome, int numeroPareceresPendentes, int numeroPosicionamentosPendentes, LocalDateTime dataCriacao, LocalDateTime dataAtualizacao, LocalDateTime dataConclusao) {
+    public ProcessoLegislativoDTO(String id, String numero, String titulo, String descricao,
+                                  StatusProcesso status, PrioridadeProcesso prioridade,
+                                  List<String> proposicaoIds, List<String> materiaIds,
+                                  String temaPrincipal, String setorResponsavelId,
+                                  String setorResponsavelNome, String gestorId, String gestorNome,
+                                  int numeroPareceresPendentes, int numeroPosicionamentosPendentes,
+                                  LocalDateTime dataCriacao, LocalDateTime dataAtualizacao,
+                                  LocalDateTime dataConclusao) {
+        this.id = id;
+        this.numero = numero;
+        this.titulo = titulo;
+        this.descricao = descricao;
+        this.status = status;
+        this.prioridade = prioridade;
+        this.proposicaoIds = proposicaoIds;
+        this.materiaIds = materiaIds;
+        this.temaPrincipal = temaPrincipal;
+        this.setorResponsavelId = setorResponsavelId;
+        this.setorResponsavelNome = setorResponsavelNome;
+        this.gestorId = gestorId;
+        this.gestorNome = gestorNome;
+        this.numeroPareceresPendentes = numeroPareceresPendentes;
+        this.numeroPosicionamentosPendentes = numeroPosicionamentosPendentes;
+        this.dataCriacao = dataCriacao;
+        this.dataUltimaAtualizacao = dataAtualizacao;
+        this.dataFinalizacao = dataConclusao;
     }
 }

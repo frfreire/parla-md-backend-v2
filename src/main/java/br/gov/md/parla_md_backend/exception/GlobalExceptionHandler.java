@@ -3,6 +3,7 @@ package br.gov.md.parla_md_backend.exception;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.support.MethodArgumentNotValidException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -36,6 +37,21 @@ public class GlobalExceptionHandler {
             errors.put(fieldName, errorMessage);
         });
         return ResponseEntity.badRequest().body(errors);
+    }
+
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<RespostaErro> handleAccessDeniedException(
+            org.springframework.security.access.AccessDeniedException ex,
+            org.springframework.web.context.request.WebRequest request) {
+
+        RespostaErro erro = new RespostaErro(
+                org.springframework.http.HttpStatus.FORBIDDEN.value(), // status (int)
+                java.time.LocalDateTime.now(),                        // timestamp
+                "Acesso Negado: " + ex.getMessage(),                  // message
+                request.getDescription(false)                         // path
+        );
+
+        return new ResponseEntity<>(erro, org.springframework.http.HttpStatus.FORBIDDEN);
     }
 }
 
